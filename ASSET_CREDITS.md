@@ -90,3 +90,7 @@ Minion variants continue to use the adapted Sinbad creature by Zi Ye under **CC 
 The Carbon Carbine and Warden Sniper GLBs and extracted material PNGs are original MIT project content, built by `art_sources/build_military_rifles.py` using the original steel PBR maps. Their new shot effects are original sample-free synthesis from `art_sources/build_military_audio.py`.
 
 The procedural Art Deco city sky, stepped skyline buildings, structural foundations, vines and foliage, directional damage UI, hero emblems, names and career chapter text are original MIT project content. The 24 profiles currently share the existing Sentinel combat model; the roster is not a collection of 24 finished character meshes.
+
+## Nightfall sky and soft lens (v0.13.0)
+
+The procedural stars, small moon, 3D-density sky clouds and screen/depth lens shader are original MIT project code. No photographic sky, moon textures or third-party post-processing packages were added. Moon surface variation and clouds are synthesized in the shader. The lens/settings UI use the same original project code and existing OFL font.

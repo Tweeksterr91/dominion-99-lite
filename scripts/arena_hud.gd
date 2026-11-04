@@ -424,7 +424,7 @@ func show_screen(value: String,context: Dictionary) -> void:
 			_wide_button("MUSIC / %d%%" % roundi(float(context.get("music",0.35))*100),.5,overlay.size.y*.49,424,"option_music",null,52)
 			_wide_button("AMBIENCE / %d%%" % roundi(float(context.get("ambience",0.5))*100),.5,overlay.size.y*.56,424,"option_ambience",null,52)
 			_wide_button("INVERT AIM / %s" % ("ON" if context.get("invert",false) else "OFF"),.5,overlay.size.y*.63,424,"option_invert",null,52)
-			_wide_button("CAMERA MOTION / %s" % ("ON" if context.get("motion",true) else "MINIMAL"),.5,overlay.size.y*.70,424,"option_motion",null,52)
+			_wide_button("VISUAL SETTINGS",.5,overlay.size.y*.70,424,"visuals",null,52)
 			_wide_button("SCREEN / %s" % context.get("orientation","AUTO"),.5,overlay.size.y*.77,424,"option_orientation",null,52)
 			_footer("BACK","options_back")
 		"paused":
@@ -643,7 +643,7 @@ func _landscape_screen(value: String,context: Dictionary) -> void:
 			_wide_button("MUSIC / %d%%" % roundi(float(context.get("music",.35))*100),.75,220,column,"option_music")
 			_wide_button("AMBIENCE / %d%%" % roundi(float(context.get("ambience",.5))*100),.25,280,column,"option_ambience")
 			_wide_button("INVERT AIM / %s" % ("ON" if context.get("invert",false) else "OFF"),.75,280,column,"option_invert")
-			_wide_button("CAMERA MOTION / %s" % ("ON" if context.get("motion",true) else "MINIMAL"),.25,340,column,"option_motion")
+			_wide_button("VISUAL SETTINGS",.25,340,column,"visuals")
 			_wide_button("SCREEN / %s" % context.get("orientation","AUTO"),.75,340,column,"option_orientation")
 			_footer("BACK","options_back")
 		"paused":

@@ -427,12 +427,12 @@ func _cycle_volume(value: float) -> float:
 
 func _update_audio() -> void:
 	if is_instance_valid(shot_sound):shot_sound.volume_db = -80 if sound_volume==0 else -12+linear_to_db(sound_volume)
-	var paused_audio: bool = app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"])
+	var paused_audio: bool = app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help","visuals"])
 	for effect in [reload_lower_sound,reload_raise_sound]:
 		if is_instance_valid(effect):
 			effect.volume_db=-80 if sound_volume==0 else -17+linear_to_db(sound_volume)
 			effect.stream_paused=paused_audio
-	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"]))
+	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help","visuals"]))
 
 func _show_options() -> void:
 	_show("options",{"sensitivity_pct":roundi(aim_sensitivity*100),"volume":sound_volume,"music":music_volume,"ambience":ambience_volume,"invert":invert_aim,"motion":camera_motion,"orientation":orientation_mode.to_upper()})
@@ -757,7 +757,7 @@ func _physics_process(delta: float) -> void:
 				last_device_safe_area=area
 				_adapt_orientation()
 	toast_left = maxf(0,toast_left-delta)
-	if not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"]:
+	if not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help","visuals"]:
 		phase_wall_time = Time.get_ticks_usec()
 		_render_hud(delta)
 		return

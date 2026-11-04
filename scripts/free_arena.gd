@@ -57,6 +57,8 @@ var keyboard_left := 0.0
 var touch_move := Vector2.ZERO
 var mouse_firing := false
 var mouse_fire_left := 0.0
+var lens: Node
+var visual_effects: Dictionary={"bloom":true,"dof":true,"chromatic":true,"motion":true}
 func _ready() -> void:
 	super._ready()
 	var previous:=hand_root
@@ -66,10 +68,13 @@ func _ready() -> void:
 	pump_sound=AudioStreamPlayer.new();pump_sound.stream=load("res://assets/audio/shotgun_pump.wav");add_child(pump_sound)
 	distant_shot=AudioStreamPlayer3D.new();distant_shot.stream=load("res://assets/audio/shotgun_shot.wav");distant_shot.max_distance=45;distant_shot.unit_size=12;add_child(distant_shot)
 	weapon_frame=preload("res://scripts/viewmodel_frame.gd").new();add_child(weapon_frame);weapon_frame.configure(camera)
+	lens=preload("res://scripts/soft_lens.gd").new();add_child(lens);lens.configure(camera);lens.apply(visual_effects)
 	_update_audio()
 func _create_hud() -> CanvasLayer:return FreeHUD.new()
 func _load_settings() -> void:
 	super._load_settings()
+	for key in visual_effects:visual_effects[key]=bool(settings.get_value("visuals",key,true))
+	if is_instance_valid(lens):lens.apply(visual_effects)
 	hero_id=str(settings.get_value("heroes","selected","rook"))
 	if HEROES.find(hero_id)["id"]!=hero_id:hero_id="rook"
 	hero_careers=settings.get_value("heroes","careers",{})
@@ -193,6 +198,11 @@ func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play" and rails.has(local_id) and not demo:_request_action("move",Vector2.ZERO)
 	super._show(value,context)
 func _ui_action(kind: String,value: Variant) -> void:
+	if kind=="visuals":_show_visuals();return
+	if kind=="visual_back":_show_options();return
+	if kind=="visual_motion":camera_motion=not camera_motion;_save_settings();_show_visuals();return
+	if kind=="visual_toggle" and visual_effects.has(str(value)):
+		visual_effects[str(value)]=not visual_effects[str(value)];lens.apply(visual_effects);_save_settings();_show_visuals();return
 	if kind=="hero_current":_show_hero_detail();return
 	if kind in ["campaign","hero_roster"]:_show_heroes();return
 	if kind=="hero_back":_show("main");return
@@ -331,6 +341,7 @@ func _replace_departed(id: int) -> void:
 	if rails.has(id):rails[id].set_move(Vector2.ZERO);_attach_brain(_body(id),id,rails[id])
 	_notify("A disconnected player is now controlled by a bot.",4)
 func _physics_process(delta: float) -> void:
+	if is_instance_valid(lens):lens.step(delta,not app_paused and (screen=="play" or demo))
 	if app_paused:return
 	if running and is_instance_valid(course_root) and course.nav_ready and not spawns_synced and _authority():_sync_random_spawns()
 	if _wheel_open() and (not _alive(local_id) or rules.phase not in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]):_close_wheel(false)
@@ -905,7 +916,10 @@ func _ai_choose_weapon(id: int,distance: float) -> void:
 			if key in p["owned"]:_switch_weapon(id,key);break
 	elif p["ammo"]==0 and p["reserve"]==0:_switch_weapon(id,"pump")
 
+func _show_visuals() -> void:
+	_show("visuals",{"effects":visual_effects,"motion":camera_motion})
 func _save_settings() -> void:
+	for key in visual_effects:settings.set_value("visuals",key,visual_effects[key])
 	settings.set_value("heroes","selected",hero_id);settings.set_value("heroes","careers",hero_careers)
 	super._save_settings()
 func _show_heroes() -> void:
@@ -922,7 +936,8 @@ func _start_hero_mission(index: int) -> void:
 	net.close();local_id=0;_start_match(int(mission["size"]),campaign_level,Time.get_ticks_msec(),[0])
 	_notify(str(mission["title"]).to_upper()+" / "+str(mission["description"]),6)
 func _controller_back() -> void:
-	if screen=="heroes":_show("main")
+	if screen=="visuals":_show_options()
+	elif screen=="heroes":_show("main")
 	elif screen=="hero_detail":_show_heroes()
 	else:super._controller_back()
 func _record_hero_career() -> String:

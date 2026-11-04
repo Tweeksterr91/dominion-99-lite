@@ -1,3 +1,11 @@
+# Nightfall (v0.13.0)
+
+Sparse soft stars and a small procedural moon sit behind slowly drifting, density-integrated sky clouds. Four samples through a shallow 3D noise field suggest cloud depth on the existing mobile Compatibility renderer; this is not full scene volumetric fog/cloud shadows. Lower sky fog influence preserves celestial detail without removing the city haze.
+
+One restrained lens pass adds bright-pass bloom, smoothly focused depth of field, edge chromatic separation and bounded camera-turn blur. The crosshair's central region, near geometry and HUD remain clear. There is no temporal smear/history or object-vector blur. Each effect has a saved toggle in Visual Settings, and all-off removes the pass. Physical-device performance must still be evaluated.
+
+Earlier iteration notes follow.
+
 # Boroughs & Careers (v0.12.0)
 
 Neo-Prohibition New York is the new setting foundation. Stepped Art Deco skyline silhouettes and 48 distant 3D buildings with amber windows and water towers surround the rooftop arenas. Existing materials remain; piers, plinths, column bases and masonry ramp cheeks tie elevated walkways to larger structures. A lower rooftop closes former void gaps. The perimeter keeps fighters inside while preserving the city view. Small batched foliage patches and hanging vines suggest reclaimed buildings.

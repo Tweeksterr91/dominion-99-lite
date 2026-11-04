@@ -40,6 +40,18 @@ func set_controller_mode(value: bool,help_text := "") -> void:
 		lock_button.visible=not value
 		if value:lock_button.release()
 func show_screen(value: String,context: Dictionary) -> void:
+	if value=="visuals":
+		super.show_screen("play",{});screen=value;data=context;combat.hide();stats.hide();overlay.show()
+		var h:=overlay.size.y;var w:=overlay.size.x
+		_wide_text("SOFT VISUALS",.5,25,w-30,58,36)
+		var entries: Array=[["bloom","SOFT BLOOM"],["dof","DEPTH OF FIELD"],["chromatic","CHROMATIC ABERRATION"],["motion","MOTION BLUR"]]
+		for i in range(entries.size()):
+			var item: Array=entries[i]
+			_wide_button(item[1]+" / "+("ON" if context["effects"][item[0]] else "OFF"),.5,120+i*(54 if landscape else 75),minf(480,w-40),"visual_toggle",item[0],46,20)
+		_wide_button("CAMERA MOTION / "+("ON" if context["motion"] else "MINIMAL"),.5,120+4*(54 if landscape else 75),minf(480,w-40),"visual_motion",null,46,20)
+		_wide_text("SUBTLE WORLD EFFECTS / HUD STAYS SHARP",.5,h-115,w-30,35,16)
+		_wide_button("BACK",.5,h-55,260,"visual_back",null,42,20)
+		return
 	if value in ["heroes","hero_detail"]:_hero_screen(value,context);return
 	if value=="conditions":
 		super.show_screen("play",{})

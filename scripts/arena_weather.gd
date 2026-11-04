@@ -4,6 +4,8 @@ const WEATHERS := [["OVERCAST","RAIN","FOG","CALM BEFORE STORM"],["OVERCAST","FO
 var conditions: Dictionary={}
 var particles: MultiMeshInstance3D
 var phase := 0.0
+var city_sky: ShaderMaterial
+var cloud_tick := 0.0
 var camera_ref: Camera3D
 static func roll(seed_value: int,biome: int) -> Dictionary:
 	var rng:=RandomNumberGenerator.new();rng.seed=seed_value+990819
@@ -18,11 +20,14 @@ func apply(value: Dictionary,environment: Environment,sun: DirectionalLight3D,ca
 	if weather!="CLEAR":sky.sky_top_color=sky.sky_top_color.lerp(Color("283341"),.25);sky.sky_horizon_color=sky.sky_horizon_color.lerp(Color("3d4656"),.20)
 	sky.ground_bottom_color=Color("20262c");sky.ground_horizon_color=sky.sky_horizon_color.darkened(.25)
 	var city:=ShaderMaterial.new();city.shader=preload("res://assets/city_sky.gdshader");city.set_shader_parameter("zenith",sky.sky_top_color);city.set_shader_parameter("horizon",sky.sky_horizon_color)
-	var sky_resource:=Sky.new();sky_resource.sky_material=city;sky_resource.radiance_size=Sky.RADIANCE_SIZE_128
+	city_sky=city;phase=0;cloud_tick=0
+	city.set_shader_parameter("night_amount",[.22,.45,.30,1.0][index])
+	city.set_shader_parameter("cloud_cover",.90 if weather in ["OVERCAST","RAIN","SNOW","ASH STORM"] else .76 if weather in ["FOG","SANDSTORM"] else .52)
+	var sky_resource:=Sky.new();sky_resource.process_mode=Sky.PROCESS_MODE_INCREMENTAL;sky_resource.sky_material=city;sky_resource.radiance_size=Sky.RADIANCE_SIZE_128
 	environment.sky=sky_resource;environment.background_mode=Environment.BG_SKY;environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color=Color("b9c9da");environment.ambient_light_energy=.48 if index!=3 else .34
 	environment.reflected_light_source=Environment.REFLECTION_SOURCE_SKY
-	environment.fog_enabled=true;environment.fog_light_color=sky.sky_horizon_color
+	environment.fog_enabled=true;environment.fog_light_color=sky.sky_horizon_color;environment.fog_sky_affect=.16
 	environment.fog_density=.018 if weather=="FOG" else .011 if weather in ["SANDSTORM","ASH STORM"] else .0025
 	sun.rotation_degrees=Vector3([-9,-12,-10,-28][index],[-70,-25,100,35][index],0)
 	sun.light_energy=[.48,.32,.38,.25][index];sun.light_color=[Color("f2caa0"),Color("fff3dd"),Color("efab80"),Color("90b3e0")][index]
@@ -36,8 +41,10 @@ func apply(value: Dictionary,environment: Environment,sun: DirectionalLight3D,ca
 	particles.visible=weather in ["RAIN","SNOW","ASH STORM","SANDSTORM"]
 	add_child(particles)
 func _process(delta: float) -> void:
+	phase+=delta;cloud_tick+=delta
+	if cloud_tick>=.25 and is_instance_valid(city_sky):
+		city_sky.set_shader_parameter("cloud_time",phase);cloud_tick=0
 	if not is_instance_valid(particles) or not particles.visible or not is_instance_valid(camera_ref):return
-	phase+=delta
 	var rain: bool=conditions["weather"]=="RAIN"
 	for i in range(particles.multimesh.instance_count):
 		var p:=Vector3(fposmod(i*13.73+phase*(.3 if rain else 2.0),34)-17,fposmod(i*4.31-phase*(16 if rain else 2.2),18)-2,fposmod(i*8.93+phase*.8,34)-17)

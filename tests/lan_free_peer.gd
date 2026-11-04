@@ -19,6 +19,9 @@ var fire_seen := false
 var bullets_seen := false
 var gold_seen := false
 var phases := {}
+var visual_opened:=false
+var visual_checked:=false
+var visual_time:=0.0
 var initial := Vector3.ZERO
 func _initialize() -> void:call_deferred("start")
 func start() -> void:
@@ -71,7 +74,13 @@ func _process(_delta: float) -> bool:
    assert(absf(angle_difference(yaw,g.rails[g.local_id].aim_yaw))<.01,"LT no longer reverses direction")
    axis(JOY_AXIS_TRIGGER_LEFT,0);g.pad_input.step(.04);turned=true
   if g.rules.phase==1 and not bought:g._request_action("buy","needle");g._request_action("ready");bought=true
+  if g.rules.phase==3 and elapsed>14 and not visual_opened:
+   g._show_visuals();visual_time=g.rules.remaining;visual_opened=true
+  if visual_opened and not visual_checked and elapsed>15.5:
+   assert(g.rules.remaining<visual_time-.1,"LAN remains live behind visual settings")
+   g._ui_action("visual_toggle","bloom");g._show("play");visual_checked=true
   if g.rules.phase==3 and elapsed>16:
+   assert(visual_checked)
    assert(packets>150 and bullets_seen and gold_seen,"Client receives continuous state, projectiles, and gold")
    assert(phases.has_all([0,1,2,3]) and g.rules.rewards.size()==8,"Full match phases and rolls synchronize")
    assert(g.player.position.distance_to(initial)>1,"Client predicts genuine free movement")

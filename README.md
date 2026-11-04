@@ -2,9 +2,13 @@
 
 A dark sci-fi arena FPS set in a Neo-Prohibition New York for Android with free movement, portrait/landscape play, controller support, automatic soul rewards, and team deathmatches.
 
-**[Download APK — v0.12.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.12.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download APK — v0.13.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.13.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FPS cap**, automatic portrait/landscape rotation. Actual phone performance and Wi-Fi behavior still need device testing.
+
+![Stars, moon and clouds](docs/night-sky.png)
+
+![Visual settings](docs/visual-settings.png)
 
 ![Landscape controller HUD](docs/landscape.png)
 
@@ -89,6 +93,16 @@ The title and main menu have no shadow-gradient scrim; their live gameplay backg
 
 The shared borough maps are Canal Ward, Civic Undercroft, Ironworks, Verdant Conservatory and East River Docks. Original Art Deco sky silhouettes, 48 inaccessible stepped skyline buildings, amber windows and water towers establish the city backdrop. Small batched foliage patches and hanging vines add overgrowth. The environment caption uses names such as STORM FRONT or NIGHT, without a clock hour. Options persist aiming sensitivity from 50%–300% in 10% steps, with a 180% reset, invert aim, separate effects/music/ambience volumes, camera motion, and the screen-orientation preference. Everyone starts with a five-shell single-barrel pump shotgun **and a team-colored plasma scythe**. The shotgun has unlimited reserve ammunition and still reloads its magazine; the scythe has unlimited use with no reload. The sawed-off double-barrel upgrade costs 140 souls, has two shells and unlimited reserve, and stays selectable alongside the original pump. All seven weapons can be owned at once. The renamed Carbon Carbine and new Warden Sniper have separate original matte military-style models and shot sounds; neither has neon/emissive trim. The sniper costs 180 souls and cannot be bought by bots. The Pulse retains the sidearm model, while the Scattergun uses the pump model and six-pellet blasts. Tight Choke costs 45 souls per stack, reducing pump/double/scatter spread by 18% multiplicatively, up to three stacks. Purchased reload speed, health and armor upgrades/packs are removed; health pickups and regenerating shield remain, as do free RNG gifts. The weapon’s anatomical first-person arms use original PBR skin, steel, fabric and walnut textures. Portrait renders the hands and weapon separately with the same fixed vertical field of view used in landscape. Its full-screen projection keeps the barrel’s vanishing point at the actual crosshair. A tuned side/depth offset keeps the barrel, receiver and supporting hand visible while cropping excess forearm, independently of the world camera’s tall field of view. Shotgun pellets and enemy bolts travel visibly; collision, rather than an immediate hitscan, determines damage.
 
+## Sky and soft visual effects
+
+The city sky now includes sparse soft stars, a small textured moon and drifting clouds. The clouds integrate four samples through a shallow 3D density field in the sky shader, with denser cover in stormy weather. This is a lightweight sky-volume approximation for the Compatibility renderer, without full scene volumetrics or cloud shadows. Fog still softens the city but no longer hides the sky. Stars and moonlight are subdued at dusk and stronger at night; clouds obscure them naturally.
+
+**Options → Visual Settings** provides separate saved switches for soft bloom, depth of field, chromatic aberration and motion blur. All default on at restrained strengths; disabling all four removes the lens rendering pass. Camera Motion / Minimal is available on that screen too.
+
+The world lens uses one bounded screen/depth pass. Depth of field smoothly focuses on the crosshair's world hit, keeps the aim center and nearby weapons clear, and avoids mixing foreground/background silhouettes. Chromatic color separation stays at the screen edges, bloom gently lifts bright world highlights, and camera-motion blur is capped at 2.2 pixels with no temporal history/ghosting. Pausing, changing orientation, or teleporting/respawning clears the motion offset. This is a soft camera-turn blur, without object motion vectors. The HUD and menu text render after the lens pass and remain sharp. The portrait weapon overlay remains separate.
+
+The 60 FPS cap is retained. Shader compilation and effect behavior are tested with the real OpenGL Compatibility renderer; sustained OnePlus 12R performance and physical-device appearance still need testing. Effects can be disabled independently if desired. Offline visual settings pause gameplay; LAN keeps running.
+
 ## Weapon inventory
 
 Hold **LB** to open the wheel, choose an acquired weapon with the aiming stick or D-pad, and release LB to equip it. B cancels. Touch uses the circular wheel button beside jump; hold and drag to a slot, then release. On desktop, hold Tab and point with the mouse. The match continues while the wheel is open; movement, aim and firing are suppressed until it closes.
@@ -143,6 +157,7 @@ See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated sce
 ## Validation and releases
 
 ```sh
+godot --headless --path . --script tests/soft_visuals_test.gd
 godot --headless --path . --script tests/borough_test.gd
 godot --headless --path . --script tests/free_arena_test.gd
 godot --headless --path . --script tests/free_biomes.gd
@@ -155,6 +170,8 @@ godot --headless --path . --script tests/match_rules_test.gd
 godot --headless --path . --script tests/ui_navigation.gd
 ```
 
-For the two-process LAN integration test, start `tests/lan_free_peer.gd -- host`, then `tests/lan_free_peer.gd -- client` in separate Godot processes on the same machine (UDP 27819). Both must report PASS. The test uses a landscape host, portrait guest, real ENet transport, controller movement/manual shots, synchronized conditions, shopping, shared rolls, hunting, and disconnected-player bot takeover. All LAN players must update to v0.12.0 (protocol 12). A second two-process test, `tests/lan_lock_peer.gd -- host` / `-- client` (UDP 27829), verifies optional LT acquisition, host-enforced charging, shooting and release between landscape/portrait peers. The two-process `tests/lan_reward_peer.gd -- host` / `-- client` test (UDP 27839) checks touch-only auto-fire, manual RT, killer-owned soul particles, automatic wallet credit and the removed harvest controls. The `tests/lan_armory_peer.gd -- host` / `-- client` pair (UDP 27849) verifies all-weapon purchases, LB selection, ammo persistence, unlimited melee and red/blue scythe visuals across landscape/portrait peers. Older rail tests explicitly use `tests/legacy_fixture.gd` to cover the reusable earlier systems.
+Run `godot --path . --script tests/soft_lens_render.gd` with a real display to verify GPU depth separation, bloom, chromatic separation, camera blur/reset and unaffected HUD pixels. Do not use `--headless` for that rendering test.
+
+For the two-process LAN integration test, start `tests/lan_free_peer.gd -- host`, then `tests/lan_free_peer.gd -- client` in separate Godot processes on the same machine (UDP 27819). Both must report PASS. The test uses a landscape host, portrait guest, real ENet transport, controller movement/manual shots, synchronized conditions, shopping, shared rolls, hunting, and disconnected-player bot takeover. LAN protocol remains 12, compatible with v0.12.0. A second two-process test, `tests/lan_lock_peer.gd -- host` / `-- client` (UDP 27829), verifies optional LT acquisition, host-enforced charging, shooting and release between landscape/portrait peers. The two-process `tests/lan_reward_peer.gd -- host` / `-- client` test (UDP 27839) checks touch-only auto-fire, manual RT, killer-owned soul particles, automatic wallet credit and the removed harvest controls. The `tests/lan_armory_peer.gd -- host` / `-- client` pair (UDP 27849) verifies all-weapon purchases, LB selection, ammo persistence, unlimited melee and red/blue scythe visuals across landscape/portrait peers. Older rail tests explicitly use `tests/legacy_fixture.gd` to cover the reusable earlier systems.
 
 Every update gets a numbered GitHub Release with a new APK. Increase `version/code` and `version/name`, keep the original signing key outside the repository, and verify the APK before upload. Current builds use development signing; store distribution requires release signing.
