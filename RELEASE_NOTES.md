@@ -1,17 +1,20 @@
-# Dominion '99 (Lite) — v0.1.1
+# Dominion '99 (Lite) — v0.1.2
 
-Portrait play with a fixed 60 FPS cap.
+First dark sci-fi visual pass: Sector 99, an industrial containment arena.
 
-## Changes
+## New visuals
 
-- Locked Android orientation to portrait.
-- Removed the 30/60 FPS toggle and its menu text; the game always uses a 60 FPS cap.
-- Rearranged the HUD, menus, movement pad, fire button, and reload button for upright play.
-- Anchored controls to the screen edges so taller phones use the full available height.
-- Preserved the horizontal camera field of view so enemies and the pistol remain visible in portrait.
+- Modular metal walls, four armored cover pylons, ceiling trusses, and a suspended reactor.
+- Cyan energy conduits, amber warning details, and original Sector 99 signage.
+- Original D-9 sidearm with beveled armor, energy spine, gloved hand, and armored sleeve.
+- Warden enemies with pale armor, crimson visors, energy rifles, and muzzle flashes.
+- Armored health and ammo cases with distinct illuminated markings.
+- Sharper cyan HUD, amber hit feedback, worn-metal surfaces, and dark atmosphere.
 
-## Install or update
+The visual references guided atmosphere and silhouettes; the models and surfaces are original project assets. Geometry and materials are batched to keep drawing work low. No real-time shadows or post-process bloom.
 
-Download `dominion-99-lite.apk` from Assets on your phone, open it, and tap Install or Update. This APK uses the same package and signing key as v0.1.0, with a higher Android version code. There is no need to uninstall the earlier version.
+Portrait orientation and the fixed 60 FPS cap remain. Actual phone frame rate is not yet measured. Gameplay and portrait layout checks passed; the new shaders and models were also checked in a rendered desktop build.
 
-Requires Android 7.0 or newer on ARM64. Godot is not required to play. This is a development build; 60 FPS is the configured cap, and actual performance has not yet been measured on a OnePlus 12R.
+## Update
+
+Download `dominion-99-lite.apk` from Assets, open it, and tap Install or Update. The package and signing key match previous versions; Android version code is now 3. No uninstall is needed. Requires Android 7.0 or newer on ARM64. This is a development build.

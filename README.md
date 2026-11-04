@@ -2,9 +2,13 @@
 
 A modern take on the classic fps arena shooter, with a bit more depth.
 
-**[Download Android APK — v0.1.1](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.1.1/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download Android APK — v0.1.2](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.1.2/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
-A small portrait-only offline FPS prototype for Android, built for editing on a phone with **Godot 4.3 or newer**. Uses the Compatibility renderer, simple geometry, no real-time shadows, synthesized audio, and no downloaded game assets.
+A small portrait-only offline FPS prototype for Android, built for editing on a phone with **Godot 4.3 or newer**. Features an original dark sci-fi containment arena, armored enemies, a pulse-style pistol, and procedural metal surfaces. Uses the Compatibility renderer, batched low-poly geometry, no real-time shadows, and synthesized audio.
+
+![Sector 99 — in-engine portrait preview](docs/preview.png)
+
+[Visual direction and asset kit](docs/ART_DIRECTION.md)
 
 ## Install the ready-made APK
 
@@ -33,7 +37,10 @@ Desktop controls: WASD, mouse aim, left click, R to reload, Esc to pause.
 
 ## Edit on the phone
 
-- `scripts/main.gd`: arena, enemy behavior, combat, HUD, and touch controls.
+- `scripts/main.gd`: enemy behavior, combat, lighting, HUD, and touch controls.
+- `scripts/visual_assets.gd`: original environment, weapon, enemy, and pickup models.
+- `assets/metal.gdshader`: procedural metal surfaces.
+- `docs/ART_DIRECTION.md`: visual palette and asset design notes.
 - `project.godot`: project title, portrait layout, renderer.
 - `main.tscn`: entry scene.
 - For a first change, adjust `SPEED`, `MAG_SIZE`, or `LAST_WAVE` at the top of `main.gd`. The arena is generated when the game starts, so the editor's 3D viewport is initially empty.
@@ -48,6 +55,6 @@ Original source and icon in this project are provided under the MIT license. God
 
 ## Publishing future builds
 
-Keep each version in its own GitHub Release with the APK and notes about the changes. Increase `version/code` in `export_presets.cfg` for every APK update and set a matching `version/name` (for example `0.1.2`). Reuse the original signing key to allow Android to update the installed game. Keep signing keys and credentials outside this repository; they are excluded by `.gitignore`.
+Keep each version in its own GitHub Release with the APK and notes about the changes. Increase `version/code` in `export_presets.cfg` for every APK update and set a matching `version/name` (for example `0.1.3`). Reuse the original signing key to allow Android to update the installed game. Keep signing keys and credentials outside this repository; they are excluded by `.gitignore`.
 
 The first build was exported with Godot 4.6.3 and the standard ARM64 Android debug template. This is a development build; a store release needs release signing.

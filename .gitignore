@@ -5,3 +5,4 @@ builds/
 *.keystore
 *.jks
 .godot/export_credentials.cfg
+*.import

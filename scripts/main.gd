@@ -1,5 +1,7 @@
 extends Node3D
-## Small, asset-free FPS prototype. All dimensions use metres.
+## Original dark sci-fi FPS prototype. All dimensions use metres.
+const VisualAssets = preload("res://scripts/visual_assets.gd")
+var art := VisualAssets.new()
 
 const SPEED := 5.8
 const MAG_SIZE := 12
@@ -41,6 +43,8 @@ var knob: Panel
 var flash: MeshInstance3D
 var flash_left := 0.0
 var shot_sound: AudioStreamPlayer
+var reticle: Label
+var hit_left := 0.0
 
 func _ready() -> void:
 	Engine.max_fps = 60
@@ -48,62 +52,29 @@ func _ready() -> void:
 	_make_player()
 	_make_audio()
 	_make_ui()
-	_show_menu("DOMINION '99", "LITE / OFFLINE ARENA\n\nClear 3 waves.\nGreen pickups: health\nAmber pickups: ammo\n\nLeft thumb: move\nRight thumb: aim\nHold FIRE to shoot. Tap RELOAD.", "DEPLOY")
-
-func _material(color: Color, glow := false) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.roughness = 1.0
-	if glow:
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return mat
-
-func _box(parent: Node3D, pos: Vector3, size: Vector3, color: Color, solid := true) -> Node3D:
-	var body: Node3D = StaticBody3D.new() if solid else Node3D.new()
-	parent.add_child(body)
-	body.position = pos
-	var mesh := MeshInstance3D.new()
-	var shape := BoxMesh.new()
-	shape.size = size
-	mesh.mesh = shape
-	mesh.material_override = _material(color)
-	body.add_child(mesh)
-	if solid:
-		var collision := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		box.size = size
-		collision.shape = box
-		body.add_child(collision)
-	return body
+	_show_menu("DOMINION '99", "SECTOR 99 / CONTAINMENT\n\nClear 3 waves.\nGreen pickups: health\nAmber pickups: ammo\n\nLeft thumb: move\nRight thumb: aim\nHold FIRE to shoot. Tap RELOAD.", "DEPLOY")
 
 func _make_arena() -> void:
 	var world := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("15202d")
+	env.background_color = Color("080b17")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("a4b5c5")
-	env.ambient_light_energy = 0.7
+	env.ambient_light_color = Color("92a6bf")
+	env.ambient_light_energy = 0.78
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.fog_enabled = true
+	env.fog_light_color = Color("111426")
+	env.fog_density = 0.009
 	world.environment = env
 	add_child(world)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-60, -25, 0)
-	sun.light_energy = 1.0
+	sun.rotation_degrees = Vector3(-55, -25, 0)
+	sun.light_color = Color("b6c8df")
+	sun.light_energy = 0.9
 	sun.shadow_enabled = false
 	add_child(sun)
-	_box(self, Vector3(0, -0.3, 0), Vector3(36, 0.6, 36), Color("39444c"))
-	for z in [-18.0, 18.0]:
-		_box(self, Vector3(0, 2, z), Vector3(37, 4, 1), Color("566773"))
-		_box(self, Vector3(0, 2.8, z * 0.97), Vector3(36, 0.22, 0.1), Color("c5dc89"), false)
-	for x in [-18.0, 18.0]:
-		_box(self, Vector3(x, 2, 0), Vector3(1, 4, 36), Color("465963"))
-	for x in [-7.0, 7.0]:
-		for z in [-6.0, 6.0]:
-			_box(self, Vector3(x, 1.25, z), Vector3(2.5, 2.5, 2.5), Color("647573"))
-			_box(self, Vector3(x, 2.55, z), Vector3(2.6, 0.12, 2.6), Color("b6ca88"), false)
-	for i in range(-4, 5):
-		_box(self, Vector3(i * 4, 0.012, 0), Vector3(0.035, 0.015, 35), Color("53616a"), false)
-		_box(self, Vector3(0, 0.013, i * 4), Vector3(35, 0.015, 0.035), Color("53616a"), false)
+	art.build_arena(self)
 	_add_pickup(Vector3(-12, 0.5, 0), "health")
 	_add_pickup(Vector3(12, 0.5, 0), "ammo")
 
@@ -127,16 +98,14 @@ func _make_player() -> void:
 	player.add_child(camera)
 	gun = Node3D.new()
 	camera.add_child(gun)
-	_box(gun, Vector3(0.25, -0.22, -0.48), Vector3(0.13, 0.14, 0.42), Color("25313a"), false)
-	_box(gun, Vector3(0.25, -0.34, -0.35), Vector3(0.10, 0.23, 0.12), Color("65706a"), false)
-	_box(gun, Vector3(0.25, -0.14, -0.48), Vector3(0.04, 0.025, 0.36), Color("d6e8a6"), false)
+	art.build_weapon(gun)
 	flash = MeshInstance3D.new()
 	var flash_mesh := SphereMesh.new()
 	flash_mesh.radius = 0.10
 	flash_mesh.height = 0.18
 	flash.mesh = flash_mesh
-	flash.material_override = _material(Color("ffe9a0"), true)
-	flash.position = Vector3(0.25, -0.21, -0.74)
+	flash.material_override = art.materials["cyan"]
+	flash.position = Vector3(0.22, -0.23, -0.83)
 	gun.add_child(flash)
 	flash.visible = false
 
@@ -159,12 +128,12 @@ func _make_audio() -> void:
 	shot_sound.volume_db = -12
 	add_child(shot_sound)
 
-func _style(color: Color, radius := 10) -> StyleBoxFlat:
+func _style(color: Color, radius := 3) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = color
 	s.set_corner_radius_all(radius)
 	s.set_border_width_all(2)
-	s.border_color = Color(0.65, 0.78, 0.65, 0.4)
+	s.border_color = Color(0.35, 0.77, 0.85, 0.5)
 	return s
 
 func _label(parent: Node, text_value: String, pos: Vector2, size: Vector2, font_size := 22) -> Label:
@@ -173,7 +142,7 @@ func _label(parent: Node, text_value: String, pos: Vector2, size: Vector2, font_
 	label.position = pos
 	label.size = size
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", Color("dfebda"))
+	label.add_theme_color_override("font_color", Color("c9dfed"))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(label)
 	return label
@@ -184,8 +153,8 @@ func _button(parent: Node, text_value: String, pos: Vector2, size: Vector2, acti
 	b.position = pos
 	b.size = size
 	b.add_theme_font_size_override("font_size", 20)
-	b.add_theme_stylebox_override("normal", _style(Color(0.06, 0.12, 0.16, 0.8)))
-	b.add_theme_stylebox_override("pressed", _style(Color("526a4d")))
+	b.add_theme_stylebox_override("normal", _style(Color(0.035, 0.07, 0.10, 0.88)))
+	b.add_theme_stylebox_override("pressed", _style(Color("31566c")))
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(action)
 	parent.add_child(b)
@@ -198,25 +167,37 @@ func _make_ui() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
-	hud = _label(root, "", Vector2(24, 34), Vector2(390, 82), 23)
+	var hud_frame := Panel.new()
+	hud_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_frame.add_theme_stylebox_override("panel", _style(Color(0.025, 0.05, 0.08, 0.84)))
+	root.add_child(hud_frame)
+	hud_frame.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	hud_frame.offset_left = 16
+	hud_frame.offset_right = -16
+	hud_frame.offset_top = 24
+	hud_frame.offset_bottom = 118
+	_label(root, "SECTOR 99  /  CONTAINMENT", Vector2(24, 120), Vector2(390, 25), 14)
+	hud = _label(root, "", Vector2(28, 34), Vector2(390, 82), 23)
 	status = _label(root, "", Vector2.ZERO, Vector2(492, 64), 21)
 	_place(status, Vector2(0.5, 0), Vector2(-246, 136), Vector2(492, 64))
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var crosshair := _label(root, "+", Vector2.ZERO, Vector2(30, 42), 30)
+	reticle = crosshair
+	reticle.add_theme_color_override("font_color", Color("64deea"))
 	_place(crosshair, Vector2(0.5, 0.5), Vector2(-15, -21), Vector2(30, 42))
 	crosshair.name = "Crosshair"
 	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pad = Panel.new()
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pad.add_theme_stylebox_override("panel", _style(Color(0.1, 0.2, 0.23, 0.35), 72))
+	pad.add_theme_stylebox_override("panel", _style(Color(0.03, 0.09, 0.13, 0.5), 72))
 	root.add_child(pad)
 	_place(pad, Vector2(0, 1), Vector2(32, -232), Vector2(145, 145))
 	knob = Panel.new()
 	knob.size = Vector2(50, 50)
 	knob.position = Vector2(47.5, 47.5)
 	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	knob.add_theme_stylebox_override("panel", _style(Color(0.7, 0.85, 0.65, 0.45), 25))
+	knob.add_theme_stylebox_override("panel", _style(Color(0.35, 0.78, 0.86, 0.45), 25))
 	pad.add_child(knob)
 	fire_button = _button(root, "FIRE", Vector2.ZERO, Vector2(132, 132), _shoot)
 	_place(fire_button, Vector2(1, 1), Vector2(-164, -260), Vector2(132, 132))
@@ -230,7 +211,7 @@ func _make_ui() -> void:
 	damage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(damage)
 	menu = Panel.new()
-	menu.add_theme_stylebox_override("panel", _style(Color("101d26"), 16))
+	menu.add_theme_stylebox_override("panel", _style(Color("0c1420"), 3))
 	root.add_child(menu)
 	_place(menu, Vector2(0.5, 0.5), Vector2(-242, -260), Vector2(484, 520))
 	menu_title = _label(menu, "", Vector2(28, 24), Vector2(428, 60), 36)
@@ -328,6 +309,9 @@ func _physics_process(delta: float) -> void:
 	if not running:
 		return
 	fire_left = maxf(0, fire_left - delta)
+	hit_left = maxf(0, hit_left - delta)
+	reticle.text = "×" if hit_left > 0 else "+"
+	reticle.modulate = Color("ffb968") if hit_left > 0 else Color.WHITE
 	flash_left = maxf(0, flash_left - delta)
 	flash.visible = flash_left > 0
 	hurt = maxf(0, hurt - delta)
@@ -381,6 +365,7 @@ func _shoot() -> void:
 	var origin := camera.global_position
 	var hit := _ray(origin, origin - camera.global_basis.z * 60, [player.get_rid()])
 	if not hit.is_empty() and hit.collider in enemies:
+		hit_left = 0.14
 		var enemy: CharacterBody3D = hit.collider
 		var hp := int(enemy.get_meta("hp")) - 34
 		enemy.set_meta("hp", hp)
@@ -416,12 +401,10 @@ func _spawn_wave() -> void:
 		col.shape = shape
 		col.position.y = 0.9
 		enemy.add_child(col)
-		_box(enemy, Vector3(0, 0.85, 0), Vector3(0.7, 1.1, 0.45), Color("b95c47"), false)
-		_box(enemy, Vector3(0, 1.6, 0), Vector3(0.48, 0.42, 0.45), Color("d3c3a1"), false)
-		_box(enemy, Vector3(0, 1.65, -0.24), Vector3(0.38, 0.10, 0.03), Color("26343c"), false)
-		_box(enemy, Vector3(0.35, 1.05, -0.32), Vector3(0.14, 0.14, 0.50), Color("27333b"), false)
+		art.build_enemy(enemy)
 		enemy.set_meta("hp", 100)
 		enemy.set_meta("attack", 1.6 + i * 0.2)
+		enemy.set_meta("muzzle", 0.0)
 		enemies.append(enemy)
 	# Each wave replenishes a basic supply so missed shots are recoverable.
 	reserve += 24
@@ -430,6 +413,9 @@ func _spawn_wave() -> void:
 
 func _tick_enemies(delta: float) -> void:
 	for enemy in enemies:
+		var muzzle_left := maxf(0, float(enemy.get_meta("muzzle")) - delta)
+		enemy.set_meta("muzzle", muzzle_left)
+		enemy.get_node("MuzzleFlash").visible = muzzle_left > 0
 		var offset := player.position - enemy.position
 		offset.y = 0
 		var distance := offset.length()
@@ -448,6 +434,8 @@ func _tick_enemies(delta: float) -> void:
 		enemy.move_and_slide()
 		var attack := float(enemy.get_meta("attack")) - delta
 		if attack <= 0 and can_see and distance < 22:
+			enemy.set_meta("muzzle", 0.12)
+			enemy.get_node("MuzzleFlash").visible = true
 			attack = 1.8
 			health = maxi(0, health - (4 + wave))
 			hurt = 0.3
@@ -457,8 +445,7 @@ func _tick_enemies(delta: float) -> void:
 		enemy.set_meta("attack", attack)
 
 func _add_pickup(pos: Vector3, kind: String) -> void:
-	var color := Color("95dc89") if kind == "health" else Color("e8ba64")
-	var item := _box(self, pos, Vector3(0.55, 0.55, 0.55), color, false)
+	var item := art.build_pickup(self, pos, kind)
 	item.set_meta("kind", kind)
 	pickups.append(item)
 
