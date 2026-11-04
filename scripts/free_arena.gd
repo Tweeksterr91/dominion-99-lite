@@ -426,8 +426,11 @@ func _equip_viewmodel() -> void:
 func _tick_viewmodel(delta: float) -> void:
 	super._tick_viewmodel(delta)
 	gun.scale=Vector3.ONE*.88
-	gun.position.x=.025
-	gun.position.y-=.04
+	gun.position.x=-.10 if get_window().size.y>get_window().size.x else .025
+	gun.position.y-=.20 if get_window().size.y>get_window().size.x else .04
+	if get_window().size.y>get_window().size.x:
+		gun.position.z-=.35
+		hand_root.position.x=-.08
 	if is_instance_valid(weapon_frame):weapon_frame.sync()
 	pump_age+=delta
 	flash.global_position=gun.global_transform*(Vector3(.19,-.157,-1.20) if rules.players[local_id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))

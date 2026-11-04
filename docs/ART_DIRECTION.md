@@ -1,3 +1,9 @@
+# Centered portrait weapon perspective (v0.9.2)
+
+The v0.9.1 bottom subframe made the weapon too small and shifted its vanishing point below the crosshair. The replacement uses a full-screen weapon projection with the landscape vertical field of view, plus a tuned lateral/depth offset. The barrel, receiver and supporting hand stay visible, excess forearm is cropped, and the weapon perspective converges on the actual screen-center crosshair. Landscape keeps its existing pose.
+
+Earlier iteration notes follow.
+
 # Portrait framing correction (v0.9.1)
 
 The hands/weapon render into a separate transparent landscape-shaped frame, anchored at the bottom of a portrait screen. The world camera keeps its own field of view. This crops the long forearms as landscape does and preserves the original pose, rather than translating the rig farther into the tall camera frustum. Landscape retains its original rendering path. The muzzle, harvesting hand and reload animation follow the framed presentation.

@@ -1,9 +1,9 @@
-# v0.9.1 — Portrait weapon framing
+# v0.9.2 — Portrait weapon perspective
 
-Fixes the long, protruding forearms and shotgun in portrait. The first-person rig now uses its own transparent, landscape-shaped rendering frame at the bottom of the screen. It keeps the natural landscape pose and proportions while cropping the excess forearms; changing the world-camera FOV no longer exposes more of the arms. Landscape presentation stays the same.
+Corrects the overly small, low shotgun from v0.9.1. The weapon now uses a full-screen portrait projection with a fixed vertical field of view. The barrel’s perspective converges on the real crosshair instead of a point near the bottom edge. A tuned side/depth offset shows the barrel, pump, receiver and supporting hand while cropping excess forearm. Landscape keeps its existing pose and renderer.
 
-The harvesting hand and muzzle flash use the same frame. Touch passes through to the HUD. Reload lowering and the displayed/physical muzzle alignment are verified across portrait, landscape and tall-phone/tablet aspect ratios. The world view, crosshair, movement, lock-on and match progress stay independent of weapon framing.
+Updated portrait previews include tall-phone and standard portrait aspect ratios. Projection checks now enforce visible muzzle and receiver positions, center the barrel’s vanishing point, and verify displayed/physical muzzle alignment, rotation and complete reload lowering. Existing free-movement/projectile, lock-on, touch-control and menu checks pass.
 
-Install `dominion-99-lite.apk` over the existing game. Same package and signing certificate, versionCode 13. LAN protocol remains 9, compatible with v0.9.0.
+Download `dominion-99-lite.apk` and install over the existing game. Same package and signing certificate, versionCode 14. LAN protocol remains 9, compatible with v0.9.0 and v0.9.1.
 
-Validation: in-engine portrait/landscape captures; projection, rotation, muzzle alignment and reload checks; free movement/projectile combat, optional lock-on, touch controls and menu regression checks. Android hardware appearance and performance still need device testing. Original code: MIT; full asset attribution and licenses are in ASSET_CREDITS.md.
+The screenshots and checks were produced in-engine. Android hardware appearance/performance still needs device testing. Original code: MIT; component asset licenses and credits are in ASSET_CREDITS.md.

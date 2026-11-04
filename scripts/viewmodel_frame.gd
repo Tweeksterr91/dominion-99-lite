@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Render the first-person rig in a bottom-anchored landscape frame in portrait.
+## Render the first-person rig with a fixed vertical FOV and a centered vanishing point.
 ## The arena camera keeps its independent world FOV and aiming projection.
 var source: Camera3D
 var viewport: SubViewport
@@ -29,9 +29,9 @@ func sync() -> void:
  image.visible=portrait
  viewport.render_target_update_mode=SubViewport.UPDATE_ALWAYS if portrait else SubViewport.UPDATE_DISABLED
  if not portrait:return
- var frame:=Vector2i(roundi(size.x),maxi(1,roundi(size.x*9.0/16.0)))
+ var frame:=Vector2i(maxi(1,roundi(size.x)),maxi(1,roundi(size.y)))
  if viewport.size!=frame:viewport.size=frame
- image.position=Vector2(0,size.y-frame.y);image.size=Vector2(frame)
+ image.position=Vector2.ZERO;image.size=Vector2(frame)
  view_camera.global_transform=source.global_transform
  var world_environment: Environment=source.get_parent().get_parent().environment
  if world_environment!=null:
