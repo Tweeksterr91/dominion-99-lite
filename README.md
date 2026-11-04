@@ -2,7 +2,7 @@
 
 A modern take on the classic fps arena shooter, with a bit more depth.
 
-**[Download Android APK — v0.1.2](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.1.2/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download Android APK — v0.1.3](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.1.3/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 A small portrait-only offline FPS prototype for Android, built for editing on a phone with **Godot 4.3 or newer**. Features an original dark sci-fi containment arena, armored enemies, a pulse-style pistol, and procedural metal surfaces. Uses the Compatibility renderer, batched low-poly geometry, no real-time shadows, and synthesized audio.
 
@@ -27,6 +27,9 @@ The editor interface is easier with a Bluetooth keyboard or mouse, but neither i
 ## Game rules
 
 - Survive three waves: 5, 7, and 9 enemies. Three pistol hits defeat an enemy.
+- Health and regenerating shield appear in the lower left; ammo appears in the lower right.
+- Start with 100 health and 100 shield. Shield absorbs damage first; excess damage reduces health.
+- After four seconds without damage, shield regenerates at 20 points per second up to 100. Health needs pickups. Pausing freezes shield recharge.
 - Green boxes restore 30 health; amber boxes give 24 reserve rounds.
 - Your pistol holds 12 rounds and takes 1.25 seconds to reload.
 - Enemies shoot when they see you. Use the four pillars as cover.
@@ -55,6 +58,10 @@ Original source and icon in this project are provided under the MIT license. God
 
 ## Publishing future builds
 
-Keep each version in its own GitHub Release with the APK and notes about the changes. Increase `version/code` in `export_presets.cfg` for every APK update and set a matching `version/name` (for example `0.1.3`). Reuse the original signing key to allow Android to update the installed game. Keep signing keys and credentials outside this repository; they are excluded by `.gitignore`.
+Keep each version in its own GitHub Release with the APK and notes about the changes. Increase `version/code` in `export_presets.cfg` for every APK update and set a matching `version/name` (for example `0.1.4`). Reuse the original signing key to allow Android to update the installed game. Keep signing keys and credentials outside this repository; they are excluded by `.gitignore`.
 
 The first build was exported with Godot 4.6.3 and the standard ARM64 Android debug template. This is a development build; a store release needs release signing.
+
+## Validation
+
+Run `godot --headless --path . --script tests/smoke.gd` to check combat, shield damage and regeneration, pickups, pause/restart, three waves, and portrait HUD placement.

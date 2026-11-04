@@ -12,7 +12,7 @@ The requested references—Turok: Rage Wars, Quake, Unreal Tournament 3, and Qua
 - **D-9 sidearm:** chamfered gunmetal receiver, energy spine, muzzle cage, gloved hand, and armored sleeve.
 - **Warden:** broad pale shoulder armor, dark helmet, crimson visor, chest core, segmented legs, and energy rifle.
 - **Pickups:** armored health cases with green crosses and amber ammo cases with cartridge markings.
-- **HUD:** dark panels, sharp cyan edges, readable status labels, and an amber hit marker.
+- **HUD:** dark panels, sharp cyan edges, health and regenerating shield at lower left, ammo at lower right, and an amber hit marker.
 
 ## Color and visibility
 

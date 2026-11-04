@@ -6,12 +6,17 @@ var art := VisualAssets.new()
 const SPEED := 5.8
 const MAG_SIZE := 12
 const LAST_WAVE := 3
+const MAX_SHIELD := 100.0
+const SHIELD_REGEN_DELAY := 4.0
+const SHIELD_REGEN_RATE := 20.0
 var player: CharacterBody3D
 var camera: Camera3D
 var gun: Node3D
 var enemies: Array[CharacterBody3D] = []
 var pickups: Array[Node3D] = []
 var health := 100
+var shield := MAX_SHIELD
+var shield_delay_left := 0.0
 var ammo := MAG_SIZE
 var reserve := 72
 var wave := 0
@@ -29,6 +34,13 @@ var move_origin := Vector2.ZERO
 var move_input := Vector2.ZERO
 var pitch := 0.0
 var hud: Label
+var health_frame: Panel
+var ammo_frame: Panel
+var health_label: Label
+var shield_label: Label
+var ammo_label: Label
+var health_bar: ProgressBar
+var shield_bar: ProgressBar
 var status: Label
 var damage: ColorRect
 var menu: Panel
@@ -52,7 +64,7 @@ func _ready() -> void:
 	_make_player()
 	_make_audio()
 	_make_ui()
-	_show_menu("DOMINION '99", "SECTOR 99 / CONTAINMENT\n\nClear 3 waves.\nGreen pickups: health\nAmber pickups: ammo\n\nLeft thumb: move\nRight thumb: aim\nHold FIRE to shoot. Tap RELOAD.", "DEPLOY")
+	_show_menu("DOMINION '99", "SECTOR 99 / CONTAINMENT\n\nClear 3 waves.\nGreen pickups: health\nAmber pickups: ammo\nShield recharges after 4s.\n\nLeft: move / Right: aim\nHold FIRE / tap RELOAD.", "DEPLOY")
 
 func _make_arena() -> void:
 	var world := WorldEnvironment.new()
@@ -178,6 +190,18 @@ func _make_ui() -> void:
 	hud_frame.offset_bottom = 118
 	_label(root, "SECTOR 99  /  CONTAINMENT", Vector2(24, 120), Vector2(390, 25), 14)
 	hud = _label(root, "", Vector2(28, 34), Vector2(390, 82), 23)
+	health_frame = _hud_panel(root, Vector2(0, 1), Vector2(16, -154), Vector2(220, 116))
+	health_label = _label(health_frame, "", Vector2(12, 8), Vector2(196, 30), 21)
+	health_label.add_theme_color_override("font_color", Color("8be5ab"))
+	health_bar = _meter(health_frame, Vector2(12, 40), Color("8be5ab"))
+	shield_label = _label(health_frame, "", Vector2(12, 53), Vector2(196, 30), 21)
+	shield_label.add_theme_color_override("font_color", Color("64deea"))
+	shield_bar = _meter(health_frame, Vector2(12, 86), Color("64deea"))
+	ammo_frame = _hud_panel(root, Vector2(1, 1), Vector2(-236, -154), Vector2(220, 116))
+	_label(ammo_frame, "D-9 / AMMO", Vector2(12, 8), Vector2(196, 26), 16)
+	ammo_label = _label(ammo_frame, "", Vector2(12, 36), Vector2(196, 62), 32)
+	ammo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ammo_label.add_theme_color_override("font_color", Color("f2ad56"))
 	status = _label(root, "", Vector2.ZERO, Vector2(492, 64), 21)
 	_place(status, Vector2(0.5, 0), Vector2(-246, 136), Vector2(492, 64))
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -192,7 +216,7 @@ func _make_ui() -> void:
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_theme_stylebox_override("panel", _style(Color(0.03, 0.09, 0.13, 0.5), 72))
 	root.add_child(pad)
-	_place(pad, Vector2(0, 1), Vector2(32, -232), Vector2(145, 145))
+	_place(pad, Vector2(0, 1), Vector2(32, -330), Vector2(145, 145))
 	knob = Panel.new()
 	knob.size = Vector2(50, 50)
 	knob.position = Vector2(47.5, 47.5)
@@ -200,9 +224,9 @@ func _make_ui() -> void:
 	knob.add_theme_stylebox_override("panel", _style(Color(0.35, 0.78, 0.86, 0.45), 25))
 	pad.add_child(knob)
 	fire_button = _button(root, "FIRE", Vector2.ZERO, Vector2(132, 132), _shoot)
-	_place(fire_button, Vector2(1, 1), Vector2(-164, -260), Vector2(132, 132))
+	_place(fire_button, Vector2(1, 1), Vector2(-164, -378), Vector2(132, 132))
 	reload_button = _button(root, "RELOAD", Vector2.ZERO, Vector2(144, 64), _reload)
-	_place(reload_button, Vector2(1, 1), Vector2(-176, -106), Vector2(144, 64))
+	_place(reload_button, Vector2(1, 1), Vector2(-176, -226), Vector2(144, 60))
 	pause_button = _button(root, "II", Vector2.ZERO, Vector2(58, 56), _pause)
 	_place(pause_button, Vector2(1, 0), Vector2(-82, 34), Vector2(58, 56))
 	damage = ColorRect.new()
@@ -221,6 +245,26 @@ func _make_ui() -> void:
 	menu_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	start_button = _button(menu, "DEPLOY", Vector2(54, 426), Vector2(376, 64), _start)
 	_update_hud()
+
+func _hud_panel(root: Control, anchor: Vector2, offset: Vector2, dimensions: Vector2) -> Panel:
+	var panel := Panel.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _style(Color(0.025, 0.05, 0.08, 0.90)))
+	root.add_child(panel)
+	_place(panel, anchor, offset, dimensions)
+	return panel
+
+func _meter(parent: Control, pos: Vector2, color: Color) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.position = pos
+	bar.max_value = 100
+	bar.show_percentage = false
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_stylebox_override("background", _style(Color("182938"), 1))
+	bar.add_theme_stylebox_override("fill", _style(color, 1))
+	parent.add_child(bar)
+	bar.size = Vector2(196, 8)
+	return bar
 
 func _place(control: Control, anchor: Vector2, offset: Vector2, dimensions: Vector2) -> void:
 	control.anchor_left = anchor.x
@@ -308,6 +352,7 @@ func _look(delta: Vector2) -> void:
 func _physics_process(delta: float) -> void:
 	if not running:
 		return
+	_tick_shield(delta)
 	fire_left = maxf(0, fire_left - delta)
 	hit_left = maxf(0, hit_left - delta)
 	reticle.text = "×" if hit_left > 0 else "+"
@@ -345,6 +390,26 @@ func _physics_process(delta: float) -> void:
 			if wave_wait <= 0:
 				_spawn_wave()
 	_update_hud()
+
+func _tick_shield(delta: float) -> void:
+	var waiting := minf(delta, shield_delay_left)
+	shield_delay_left -= waiting
+	var recharge_time := delta - waiting
+	if recharge_time > 0 and shield < MAX_SHIELD:
+		shield = minf(MAX_SHIELD, shield + SHIELD_REGEN_RATE * recharge_time)
+
+func _take_damage(amount: float) -> void:
+	if not running or amount <= 0:
+		return
+	var absorbed := minf(shield, amount)
+	shield -= absorbed
+	health = maxi(0, health - ceili(amount - absorbed))
+	shield_delay_left = SHIELD_REGEN_DELAY
+	hurt = 0.3
+	damage.color = Color(0.10, 0.55, 0.85, 0.21) if absorbed >= amount else Color(0.8, 0.1, 0.05, 0.21)
+	_update_hud()
+	if health <= 0:
+		_end(false)
 
 func _ray(from: Vector3, to: Vector3, exclude: Array[RID]) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(from, to)
@@ -437,10 +502,8 @@ func _tick_enemies(delta: float) -> void:
 			enemy.set_meta("muzzle", 0.12)
 			enemy.get_node("MuzzleFlash").visible = true
 			attack = 1.8
-			health = maxi(0, health - (4 + wave))
-			hurt = 0.3
-			if health <= 0:
-				_end(false)
+			_take_damage(4 + wave)
+			if not running:
 				return
 		enemy.set_meta("attack", attack)
 
@@ -464,7 +527,12 @@ func _tick_pickups(delta: float) -> void:
 			item.queue_free()
 
 func _update_hud() -> void:
-	hud.text = "HP %03d     WAVE %d / %d\nAMMO %02d / %02d" % [health, wave, LAST_WAVE, ammo, reserve]
+	hud.text = "DOMINION '99\nWAVE %d / %d" % [wave, LAST_WAVE]
+	health_label.text = "HEALTH  %03d" % health
+	shield_label.text = "SHIELD  %03d%s" % [ceili(shield), " +" if shield < MAX_SHIELD and shield_delay_left <= 0 else ""]
+	ammo_label.text = "%02d / %02d" % [ammo, reserve]
+	health_bar.value = health
+	shield_bar.value = shield
 	if reload_left > 0:
 		status.text = "RELOADING..."
 	elif ammo == 0 and reserve == 0:
