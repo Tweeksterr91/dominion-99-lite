@@ -58,7 +58,7 @@ func run() -> void:
   var x: float=g.gun.position.x
   for i in range(30):g._tick_viewmodel(.016)
   check(g.gun.position.x==x,"Viewmodel position never drifts")
-  check(g.gun.scale.x<.75 if size.x<size.y else g.gun.scale.x>.8,"Portrait viewmodel is smaller than landscape")
+  check(is_equal_approx(g.gun.scale.x,.88),"Both orientations retain the same natural weapon pose")
   check(not g.hud_ui.reverse.visible,"No 180 button in either orientation")
  # Compare actual visual and collider corners for rotated rail/ramp boxes.
  var fixture=load("res://scripts/free_map.gd").new();var holder:=Node3D.new();g.add_child(holder)

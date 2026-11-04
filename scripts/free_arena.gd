@@ -20,6 +20,7 @@ var sun: DirectionalLight3D
 var projectiles: Node3D
 var brains: Dictionary={}
 var enemy_motions: Dictionary={}
+var weapon_frame: CanvasLayer
 var shotgun_rig: Node3D
 var pump_sound: AudioStreamPlayer
 var distant_shot: AudioStreamPlayer3D
@@ -39,6 +40,7 @@ func _ready() -> void:
 	_layer_weapon(hand_root)
 	pump_sound=AudioStreamPlayer.new();pump_sound.stream=load("res://assets/audio/shotgun_pump.wav");add_child(pump_sound)
 	distant_shot=AudioStreamPlayer3D.new();distant_shot.stream=load("res://assets/audio/shotgun_shot.wav");distant_shot.max_distance=45;distant_shot.unit_size=12;add_child(distant_shot)
+	weapon_frame=preload("res://scripts/viewmodel_frame.gd").new();add_child(weapon_frame);weapon_frame.configure(camera)
 	_update_audio()
 func _create_hud() -> CanvasLayer:return FreeHUD.new()
 func _load_settings() -> void:
@@ -57,6 +59,7 @@ func _load_controller_settings() -> void:
 func _make_player() -> void:
 	super._make_player()
 	camera.far=100
+	flash.layers=2
 	for child in camera.get_children():
 		if child is OmniLight3D:child.light_energy=.28
 	shotgun_rig=PUMP.instantiate();gun.add_child(shotgun_rig);_layer_weapon(shotgun_rig)
@@ -127,6 +130,7 @@ func _adapt_orientation() -> void:
 	super._adapt_orientation()
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.lock_button):hud_ui.lock_button.release()
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.stick) and hud_ui.stick.finger>=0:hud_ui.stick.release()
+	if is_instance_valid(weapon_frame):weapon_frame.sync()
 
 func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play":
@@ -365,6 +369,7 @@ func _fire_weapon(id: int,aim := Vector3.ZERO) -> void:
 		var hit:=_target_for(id)
 		aim=hit.get("position",camera.global_position-camera.global_basis.z*38)
 		origin=gun.global_transform*(Vector3(.19,-.157,-1.19) if rules.players[id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))
+		if is_instance_valid(weapon_frame):origin=weapon_frame.muzzle_world(origin)
 		var blocked:=get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(camera.global_position,origin,1))
 		if not blocked.is_empty():origin=blocked["position"]+Vector3(blocked["normal"])*.04
 	var state: Dictionary=lock_states.get(id,{})
@@ -420,11 +425,10 @@ func _equip_viewmodel() -> void:
 	_set_weapon_audio_levels(pump)
 func _tick_viewmodel(delta: float) -> void:
 	super._tick_viewmodel(delta)
-	var portrait: bool=get_window().size.y>get_window().size.x
-	gun.scale=Vector3.ONE*(.70 if portrait else .88)
+	gun.scale=Vector3.ONE*.88
 	gun.position.x=.025
-	gun.position.y-=.40 if portrait else .04
-	gun.position.z-=.36 if portrait else 0
+	gun.position.y-=.04
+	if is_instance_valid(weapon_frame):weapon_frame.sync()
 	pump_age+=delta
 	flash.global_position=gun.global_transform*(Vector3(.19,-.157,-1.20) if rules.players[local_id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))
 	if rules.players[local_id]["weapon"]=="pump":

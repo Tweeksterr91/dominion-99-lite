@@ -1,3 +1,9 @@
+# Portrait framing correction (v0.9.1)
+
+The hands/weapon render into a separate transparent landscape-shaped frame, anchored at the bottom of a portrait screen. The world camera keeps its own field of view. This crops the long forearms as landscape does and preserves the original pose, rather than translating the rig farther into the tall camera frustum. Landscape retains its original rendering path. The muzzle, harvesting hand and reload animation follow the framed presentation.
+
+Earlier iteration notes follow.
+
 # Lock & Load visual pass (v0.9.0)
 
 Rotated ramps and railings now scale in their local axes, matching the actual collision shapes. Two roofed stone gatehouses add enclosed rooms and arched entrances to every biome. Existing circular arenas and elevated paths remain connected. Environment rolls are restricted to dark sunset, storm front, overcast dusk and night.
