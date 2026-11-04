@@ -74,6 +74,7 @@ See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated sce
 ```sh
 godot --headless --path . --script tests/match_rules_test.gd
 godot --headless --path . --script tests/souls_game_test.gd
+godot --headless --path . --script tests/ui_navigation.gd --quit-after 120
 godot --headless --path . --script tests/rail_traversal.gd
 ```
 

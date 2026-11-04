@@ -196,7 +196,9 @@ func press_at(point: Vector2) -> bool:
 func show_screen(value: String,context: Dictionary) -> void:
 	screen = value
 	data = context
-	for child in overlay.get_children():child.free()
+	for child in overlay.get_children():
+		overlay.remove_child(child)
+		child.queue_free()
 	buttons = buttons.filter(func(b): return is_instance_valid(b))
 	ip = null
 	combat.visible = value == "play"
