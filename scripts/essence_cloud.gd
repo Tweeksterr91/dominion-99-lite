@@ -6,6 +6,7 @@ var orbs: Dictionary = {}
 var next_id := 1
 var cloud: MultiMeshInstance3D
 var elapsed := 0.0
+var automatic_collection := false
 
 func _ready() -> void:
 	cloud = MultiMeshInstance3D.new()
@@ -59,12 +60,13 @@ func clear() -> void:
 	if is_instance_valid(cloud):cloud.multimesh.visible_instance_count = 0
 
 func destroy(id: int) -> bool:
-	if not orbs.has(id) or orbs[id]["gold"]:return false
+	if not orbs.has(id) or orbs[id]["gold"] or (automatic_collection and int(orbs[id]["owner"])>=0):return false
 	remove(id)
 	denied.emit()
 	return true
 
 func pull(fighter: int,from: Vector3,reach: float,collectors: Dictionary,clear_sight: Callable) -> void:
+	if automatic_collection:return
 	for id in orbs:
 		var orb: Dictionary = orbs[id]
 		var distance := from.distance_to(orb["pos"])
@@ -122,6 +124,7 @@ func apply_snapshot(data: Array) -> void:
 		if not orbs.has(id):spawn(item[1],int(item[2]),id,bool(item[4]))
 		orbs[id]["pos"] = item[1]
 		orbs[id]["owner"] = int(item[3])
+		orbs[id]["area"].collision_layer=0 if automatic_collection and int(item[3])>=0 else 64 if bool(item[4]) else 8
 		orbs[id]["area"].position = item[1]
 	for id in orbs.keys():
 		if id not in seen:remove(id)

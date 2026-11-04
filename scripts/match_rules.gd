@@ -24,7 +24,7 @@ const GIFTS := [
 	{"id": "edge", "name": "QUIET EDGE", "detail": "+2% damage"},
 	{"id": "aegis", "name": "THIN AEGIS", "detail": "+5 max shield"},
 	{"id": "chamber", "name": "QUICK CHAMBER", "detail": "3% faster reload"},
-	{"id": "reach", "name": "LONG REACH", "detail": "+1 m essence pull"},
+	{"id": "reach", "name": "TARGET REACH", "detail": "+1 m lock range"},
 	{"id": "recovery", "name": "SECOND BREATH", "detail": "Shield recovers 0.15 s earlier"},
 ]
 var players: Array[Dictionary] = []

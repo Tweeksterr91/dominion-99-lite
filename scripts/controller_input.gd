@@ -23,7 +23,7 @@ var repeat_left := 0.0
 var trigger_latches: Dictionary = {}
 var locking := false
 var lock_heartbeat := 0.0
-const FREE_DEFAULTS := {"jump":JOY_BUTTON_A,"lock":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"suction":JOY_BUTTON_B,"pause":JOY_BUTTON_START}
+const FREE_DEFAULTS := {"jump":JOY_BUTTON_A,"lock":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"pause":JOY_BUTTON_START}
 var firing := false
 var fire_heartbeat := 0.0
 var free_movement := true
@@ -74,7 +74,7 @@ func button_name(button: int) -> String:
 	return {JOY_BUTTON_BACK:"VIEW",JOY_BUTTON_GUIDE:"HOME",JOY_BUTTON_START:"START",JOY_BUTTON_LEFT_STICK:"L3",JOY_BUTTON_RIGHT_STICK:"R3",JOY_BUTTON_LEFT_SHOULDER:"LB",JOY_BUTTON_RIGHT_SHOULDER:"RB"}.get(button,"BUTTON %d" % button)
 
 func prompt() -> String:
-	if free_movement:return "LT LOCK   RT FIRE   %s JUMP   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
+	if free_movement:return "LT LOCK   RT FIRE   %s JUMP   %s RELOAD" % [button_name(bindings["jump"]),button_name(bindings["reload"]) ]
 	return "RT FIRE   %s JUMP   %s 180°   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reverse"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
 
 func shoulder_prompt() -> String:

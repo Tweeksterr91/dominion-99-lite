@@ -6,7 +6,11 @@ const Brain=preload("res://scripts/free_brain.gd")
 const Projectiles=preload("res://scripts/arena_projectiles.gd")
 const Weather=preload("res://scripts/arena_weather.gd")
 const PUMP=preload("res://assets/models/pump_shotgun.glb")
-const HUMAN_HAND=preload("res://assets/models/human_harvest.glb")
+const BOT_MOVE_SPEED := 3.2
+const MINION_SPEED_MULTIPLIER := .85
+const SHOT_VOLUME_SCALE := .5
+var touch_auto := false
+var auto_heartbeat := 0.0
 const LOCK_TIME := .7
 var lock_states: Dictionary={}
 var touch_lock := false
@@ -36,8 +40,8 @@ func _ready() -> void:
 	super._ready()
 	var previous:=hand_root
 	camera.remove_child(previous);previous.queue_free()
-	hand_root=HUMAN_HAND.instantiate();camera.add_child(hand_root);hand_root.hide()
-	_layer_weapon(hand_root)
+	hand_root=Node3D.new();camera.add_child(hand_root);hand_root.hide()
+	cloud.automatic_collection=true
 	pump_sound=AudioStreamPlayer.new();pump_sound.stream=load("res://assets/audio/shotgun_pump.wav");add_child(pump_sound)
 	distant_shot=AudioStreamPlayer3D.new();distant_shot.stream=load("res://assets/audio/shotgun_shot.wav");distant_shot.max_distance=45;distant_shot.unit_size=12;add_child(distant_shot)
 	weapon_frame=preload("res://scripts/viewmodel_frame.gd").new();add_child(weapon_frame);weapon_frame.configure(camera)
@@ -53,7 +57,7 @@ func _load_controller_settings() -> void:
 	super._load_controller_settings()
 	var previous: Dictionary=pad_input.bindings.duplicate()
 	pad_input.bindings=Controller.FREE_DEFAULTS.duplicate()
-	for action in ["jump","reload","suction","pause"]:pad_input.bind(action,int(previous.get(action,Controller.FREE_DEFAULTS[action])))
+	for action in ["jump","reload","pause"]:pad_input.bind(action,int(previous.get(action,Controller.FREE_DEFAULTS[action])))
 	var saved: Dictionary=settings.get_value("controller","bindings",{})
 	if saved.has("lock"):pad_input.bind("lock",int(saved["lock"]))
 func _make_player() -> void:
@@ -93,7 +97,7 @@ func _setup_round() -> void:
 		if is_instance_valid(brain) and brain.get_parent()==player:
 			if is_instance_valid(brain.agent):brain.agent.queue_free()
 			brain.queue_free()
-	brains.clear();enemy_motions.clear();rails.clear();lock_states.clear();touch_lock=false;mouse_lock=false
+	brains.clear();enemy_motions.clear();rails.clear();lock_states.clear();touch_lock=false;mouse_lock=false;touch_auto=false
 	for node in supply_nodes:node.queue_free()
 	supply_nodes.clear();supply_timers.clear()
 	for body in corpses:
@@ -101,7 +105,7 @@ func _setup_round() -> void:
 	corpses.clear();corpse_lives.clear();cloud.clear();projectiles.clear();next_minion=100
 	for p in rules.players:
 		var id: int=p["id"];var stat:=rules.stats(id)
-		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":30 if p["weapon"]=="pump" else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"reload_cycle":0,"reload_finish":0},true)
+		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":30 if p["weapon"]=="pump" else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"touch_auto_left":0.0,"reload_cycle":0,"reload_finish":0},true)
 		var lane: int=id if p["team"]==0 else id-selected_size
 		var spawn: int=[10,9,11,19][lane] if p["team"]==0 else [14,13,15,23][lane]
 		var body:=player if id==local_id else _create_entity(id,"fighter",spawn,id)
@@ -128,12 +132,14 @@ func _remove_entity(key: int) -> void:
 	brains.erase(key);enemy_motions.erase(key);super._remove_entity(key)
 func _adapt_orientation() -> void:
 	super._adapt_orientation()
+	_set_touch_auto(false)
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.lock_button):hud_ui.lock_button.release()
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.stick) and hud_ui.stick.finger>=0:hud_ui.stick.release()
 	if is_instance_valid(weapon_frame):weapon_frame.sync()
 
 func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play":
+		_set_touch_auto(false)
 		mouse_firing=false;mouse_lock=false;touch_lock=false
 		if is_instance_valid(pad_input):pad_input.stop_locking()
 		if not demo:_request_action("lock",false)
@@ -142,13 +148,13 @@ func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play" and rails.has(local_id) and not demo:_request_action("move",Vector2.ZERO)
 	super._show(value,context)
 func _ui_action(kind: String,value: Variant) -> void:
-	if kind=="reverse":return
+	if kind in ["reverse","suction","essence"]:return
 	if kind=="lock":touch_lock=bool(value);_request_action("lock",value);return
 	if kind=="move":
 		touch_move=value;keyboard_used=false;_request_action("move",value)
 	else:super._ui_action(kind,value)
 func _controller_command(kind: String,value: Variant) -> void:
-	if kind=="reverse":return
+	if kind in ["reverse","suction","essence"]:return
 	if kind=="lock":
 		if screen=="play" or value==false:_request_action(kind,value)
 		return
@@ -158,6 +164,8 @@ func _controller_command(kind: String,value: Variant) -> void:
 		return
 	super._controller_command(kind,value)
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouse or event is InputEventKey:_set_touch_auto(false)
+	var ending_touch: bool=event is InputEventScreenTouch and not event.pressed and event.index==touch_aim
 	if event is InputEventKey and event.keycode==KEY_Q:return
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_RIGHT and screen=="play":
 		mouse_lock=event.pressed;_request_action("lock",event.pressed);get_viewport().set_input_as_handled();return
@@ -169,6 +177,9 @@ func _input(event: InputEvent) -> void:
 		if hud_ui.stick.handle(event):get_viewport().set_input_as_handled();return
 	if event is InputEventKey and event.keycode in [KEY_W,KEY_A,KEY_S,KEY_D,KEY_UP,KEY_DOWN,KEY_LEFT,KEY_RIGHT] and screen=="play":keyboard_used=true;get_viewport().set_input_as_handled();return
 	super._input(event)
+	if ending_touch:_set_touch_auto(false)
+	elif screen=="play" and event is InputEventScreenTouch and event.pressed and touch_aim==event.index:_set_touch_auto(true)
+	elif screen=="play" and event is InputEventScreenDrag and touch_aim==event.index:_set_touch_auto(true)
 func _look(change: Vector2) -> void:
 	if not rails.has(local_id):return
 	var motion=rails[local_id]
@@ -176,13 +187,16 @@ func _look(change: Vector2) -> void:
 	motion.pitch=clampf(motion.pitch-change.y*aim_sensitivity*(-1 if invert_aim else 1),-1.25,1.25)
 	player.rotation.y=motion.aim_yaw;camera.rotation=Vector3(motion.pitch,0,0)
 func _request_action(kind: String,value: Variant=null) -> void:
-	if kind=="reverse":return
+	if kind in ["reverse","suction","essence"]:return
 	if kind=="lock" and not demo:_set_lock_input(local_id,bool(value))
 	if kind=="move" and not demo and rails.has(local_id) and value is Vector2:rails[local_id].set_move(value)
 	super._request_action(kind,value)
 func _apply_action(id: int,kind: String,value: Variant,sequence: int) -> void:
 	if not _authority() or id not in humans or not rails.has(id):return
-	if kind=="reverse":return
+	if kind in ["reverse","suction","essence"]:return
+	if kind=="autofire":
+		if value is bool and (not value or (prelude_left<=0 and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(id))):rules.players[id]["touch_auto_left"]=.5 if value else 0.0
+		return
 	if kind=="lock":
 		if value is bool and (value==false or (prelude_left<=0 and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(id))):_set_lock_input(id,value)
 		return
@@ -237,6 +251,11 @@ func _physics_process(delta: float) -> void:
 		_render_hud(delta)
 		return
 	if screen=="play" and not demo:
+		if touch_auto:
+			if touch_aim<0 or pad_input.active:_set_touch_auto(false)
+			else:
+				auto_heartbeat-=delta
+				if auto_heartbeat<=0:_request_action("autofire",true);auto_heartbeat=.18
 		lock_heartbeat-=delta
 		if (touch_lock or mouse_lock) and lock_heartbeat<=0:_request_action("lock",true);lock_heartbeat=.18
 		if mouse_firing:
@@ -256,8 +275,12 @@ func _physics_process(delta: float) -> void:
 func _handle_phase_change() -> void:
 	if prelude_left>0:return
 	var before: int=phase_revision
+	if _authority() and before!=rules.revision and rules.phase==Rules.Phase.SHOP:
+		for orb in cloud.orbs.values():
+			if int(orb["owner"])>=0:rules.credit_essence(int(orb["owner"]),int(orb["value"]))
 	super._handle_phase_change()
 	if before!=phase_revision and rules.phase not in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]:projectiles.clear();lock_states.clear()
+	if before!=phase_revision and rules.phase==Rules.Phase.COLLECTION:_notify("COLLECTION / Kill minions. Their souls fly to the killer.",5)
 func _tick_bots(delta: float) -> void:
 	for key in entities.keys():
 		if not entities.has(key) or not brains.has(key):continue
@@ -281,14 +304,12 @@ func _tick_bots(delta: float) -> void:
 				goal=body.position+side*sin(float(Time.get_ticks_msec())*.001+key)*2.5
 		else:
 			if body.position.distance_to(goal)<1.8:goal=course.nodes[combat_random.randi_range(0,24)];body.set_meta("wander_goal",goal)
-		if fighter>=0 and rules.phase==Rules.Phase.COLLECTION:
-			for orb in cloud.orbs.values():
-				if body.position.distance_to(orb["pos"])<7:goal=orb["pos"];break
+
 		var direction: Vector3=brains[key].steer(body,motion,goal,delta)
 		if not is_instance_valid(target) and direction.length()>.2:motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-direction.x,-direction.z),deg_to_rad(90 if fighter>=0 else 65)*delta)
 		var local: Vector3=Basis(Vector3.UP,motion.aim_yaw).inverse()*direction
 		motion.set_move(Vector2(local.x,local.z))
-		var speed: float=Minions.TYPES[body.get_meta("subtype","scavenger")]["speed"] if fighter<0 else 5.0
+		var speed: float=float(Minions.TYPES[body.get_meta("subtype","scavenger")]["speed"])*MINION_SPEED_MULTIPLIER if fighter<0 else BOT_MOVE_SPEED
 		if brains[key].jumping_left>0:speed=maxf(speed,6.0)
 		var event: String=motion.step(body,course,delta,speed)
 		if event=="fallen":
@@ -350,6 +371,7 @@ func _tick_auto_combat(delta: float) -> void:
 			if not hit.is_empty() and hit["collider"] is Area3D and cloud.orbs.get(int(hit["collider"].get_meta("orb",-1)),{}).get("gold",false):continue
 			if _can_shoot(id):_fire_weapon(id)
 			continue
+		if not demo and float(p.get("touch_auto_left",0))<=0:continue
 		if hit.is_empty():p["deny_id"]=-1;p["deny_dwell"]=0.0;continue
 		var target: Object=hit["collider"]
 		if target is Area3D and target.has_meta("orb"):
@@ -430,7 +452,7 @@ func _tick_viewmodel(delta: float) -> void:
 	gun.position.y-=.20 if get_window().size.y>get_window().size.x else .04
 	if get_window().size.y>get_window().size.x:
 		gun.position.z-=.35
-		hand_root.position.x=-.08
+	hand_amount=0;hand_root.hide()
 	if is_instance_valid(weapon_frame):weapon_frame.sync()
 	pump_age+=delta
 	flash.global_position=gun.global_transform*(Vector3(.19,-.157,-1.20) if rules.players[local_id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))
@@ -441,14 +463,14 @@ func _tick_viewmodel(delta: float) -> void:
 		shotgun_rig.get_node("SupportArm").visible=hand_amount<.2
 		if pump_age>.18 and not pump_sound_played and is_instance_valid(pump_sound):pump_sound.play();pump_sound_played=true
 func _set_weapon_audio_levels(pump: bool) -> void:
-	shot_sound.volume_db=-80 if sound_volume==0 else (-5 if pump else -12)+linear_to_db(sound_volume)
+	shot_sound.volume_db=-80 if sound_volume==0 else (-5 if pump else -12)+linear_to_db(sound_volume*SHOT_VOLUME_SCALE)
 	for effect in [reload_lower_sound,reload_raise_sound]:effect.volume_db=-80 if sound_volume==0 else (-9 if pump else -17)+linear_to_db(sound_volume)
 
 func _update_audio() -> void:
 	super._update_audio()
 	if not rules.players.is_empty():_set_weapon_audio_levels(rules.players[local_id]["weapon"]=="pump")
-	if is_instance_valid(pump_sound):pump_sound.volume_db=-80 if sound_volume==0 else -13+linear_to_db(sound_volume);pump_sound.stream_paused=app_paused or (not demo and not net.in_match and screen!="play")
-	if is_instance_valid(distant_shot):distant_shot.volume_db=-80 if sound_volume==0 else -20+linear_to_db(sound_volume)
+	if is_instance_valid(pump_sound):pump_sound.volume_db=-80 if sound_volume==0 else -13+linear_to_db(sound_volume*SHOT_VOLUME_SCALE);pump_sound.stream_paused=app_paused or (not demo and not net.in_match and screen!="play")
+	if is_instance_valid(distant_shot):distant_shot.volume_db=-80 if sound_volume==0 else -20+linear_to_db(sound_volume*SHOT_VOLUME_SCALE)
 func _demo_tick(delta: float) -> void:
 	_tick_fighter_states(delta)
 	var motion=rails[local_id]
@@ -466,7 +488,6 @@ func _demo_tick(delta: float) -> void:
 	motion.set_move(Vector2(local.x,local.z))
 	_tick_human_motion(delta);_tick_bots(delta);_tick_auto_combat(delta)
 	if rules.players[local_id]["ammo"]==0 and rules.players[local_id]["reload"]<=0:_try_reload(local_id)
-	rules.players[local_id]["suction"]=1.5
 	_tick_suction(delta);cloud.tick(delta,_collector_positions(),true);_tick_supplies(delta)
 func _render_hud(delta: float) -> void:
 	if rules.players.is_empty():return
@@ -475,7 +496,7 @@ func _render_hud(delta: float) -> void:
 	var essence: bool=not hit.is_empty() and hit["collider"] is Area3D
 	var gold: bool=essence and cloud.orbs.get(int(hit["collider"].get_meta("orb",-1)),{}).get("gold",false)
 	var key: String=pad_input.button_name(pad_input.bindings["reload"]) if pad_input.active else "TAP"
-	var hint: String=(key+" IN AMBER" if not p["reload_used"] else "RELOADING") if p["reload"]>0 else (("FIND AMMO") if p["ammo"]==0 else "GOLD / HARVEST ONLY" if gold else "BLUE ESSENCE / HARVEST OR DENY" if essence else "")
+	var hint: String=(key+" IN AMBER" if not p["reload_used"] else "RELOADING") if p["reload"]>0 else (("FIND AMMO") if p["ammo"]==0 else "GOLD / AUTO COLLECTION" if gold else "BLUE ESSENCE / AUTO COLLECTION" if essence else "")
 	var notice: String=toast if toast_left>0 else ""
 	if not _alive(local_id):notice="RESPAWN / %.0f" % ceilf(p["respawn"]) if p["lives"]>0 else "ELIMINATED / WATCHING THE ROUND"
 	hud_ui.update_view({"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"notice":notice,"lock_progress":_lock_progress(local_id),"lock_active":float(lock_states.get(local_id,{}).get("ttl",0))>0,"lock_rect":_lock_rect(),"route_hint":"%s / %s" % [conditions.get("time",""),conditions.get("weather","")],"routes":{},"queued":"","can_drop":false,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":not hit.is_empty() and hit["collider"] is CharacterBody3D,"essence_target":essence,"essence_gold":gold,"reload_hint":hint,"reload_progress":1.0-p["reload"]/maxf(.1,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names(),"conditions":conditions,"prelude":prelude_left},delta)
@@ -541,7 +562,7 @@ func _valid_lock(id: int,target: CharacterBody3D,sticky := false) -> bool:
 	elif target.get_meta("role","")!="minion" or rules.phase!=Rules.Phase.COLLECTION:return false
 	var origin:=_body(id).position+Vector3.UP*1.65
 	var offset:=_lock_point(target)-origin
-	if offset.length()>32:return false
+	if offset.length()>32+int(rules.players[id]["gifts"].get("reach",0)):return false
 	var m=rails[id];var forward: Vector3=-Basis.from_euler(Vector3(m.pitch,m.aim_yaw,0)).z
 	return forward.dot(offset.normalized())>cos(deg_to_rad(55 if sticky else 22)) and _clear_sight(origin,_lock_point(target))
 func _tick_locks(delta: float) -> void:
@@ -587,4 +608,35 @@ func _lock_rect() -> Rect2:
 func _tick_fighter_states(delta: float) -> void:
 	super._tick_fighter_states(delta)
 	for p in rules.players:
+		p["touch_auto_left"]=maxf(0,float(p.get("touch_auto_left",0))-delta)
+		p["suction"]=0.0
 		if _alive(p["id"]) and p["ammo"]==0 and p["reserve"]>0 and p["reload"]<=0:_try_reload(p["id"])
+
+func _set_touch_auto(enabled: bool) -> void:
+	if enabled==touch_auto:return
+	touch_auto=enabled;auto_heartbeat=0
+	if not demo and running and not rules.players.is_empty():_request_action("autofire",enabled)
+func _controller_mode(active: bool) -> void:
+	if active:touch_aim=-1;_set_touch_auto(false)
+	super._controller_mode(active)
+func _tick_suction(_delta: float) -> void:pass
+func _collector_positions() -> Dictionary:
+	var collectors: Dictionary={}
+	for p in rules.players:
+		var body:=_body(int(p["id"]))
+		if is_instance_valid(body):collectors[p["id"]]=body.position+Vector3.UP*1.15
+	return collectors
+func _damage_entity(body: CharacterBody3D,amount: float,attacker: int) -> void:
+	if not is_instance_valid(body) or body.is_queued_for_deletion() or not body.has_meta("role"):return
+	if body.get_meta("role")=="fighter":_damage_fighter(int(body.get_meta("fighter")),amount,attacker);return
+	if rules.phase!=Rules.Phase.COLLECTION or attacker<0 or attacker>=rules.players.size():return
+	var hp:=float(body.get_meta("hp"))-amount;body.set_meta("hp",hp)
+	if hp>0:return
+	rules.players[attacker]["minions"]+=1
+	var pos:=body.position;_create_corpse(body)
+	var drop: Dictionary=Minions.TYPES[body.get_meta("subtype","scavenger")]
+	for i in range(int(drop["drops"])):
+		var id: int=cloud.spawn(pos+Vector3((i-(int(drop["drops"])-1)*.5)*.20,.9,.15*sin(i*2.0)),int(drop["value"]),-1,bool(drop["gold"]))
+		if id>=0:cloud.orbs[id]["owner"]=attacker;cloud.orbs[id]["area"].collision_layer=0
+		else:rules.credit_essence(attacker,int(drop["value"]))
+	_remove_entity(int(body.get_meta("key")))

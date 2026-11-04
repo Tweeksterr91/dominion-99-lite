@@ -1,3 +1,9 @@
+# Automatic killer rewards (v0.10.0)
+
+The soul-harvest button and separate absorbing-hand model are removed from active gameplay. Blue/gold orbs now home directly to the killing fighter’s body and are protected in transit. Weapon hands and the corrected portrait weapon framing remain. The controller guide shows manual RT fire, with auto-fire reserved for a held touchscreen aim touch. Shooting/pump effects are mixed at half their prior amplitude.
+
+Earlier iteration notes follow.
+
 # Centered portrait weapon perspective (v0.9.2)
 
 The v0.9.1 bottom subframe made the weapon too small and shifted its vanishing point below the crosshair. The replacement uses a full-screen weapon projection with the landscape vertical field of view, plus a tuned lateral/depth offset. The barrel, receiver and supporting hand stay visible, excess forearm is cropped, and the weapon perspective converges on the actual screen-center crosshair. Landscape keeps its existing pose.

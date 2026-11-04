@@ -33,11 +33,9 @@ func verify() -> void:
    assert(is_equal_approx(original_z,g.gun.position.z),"Portrait depth offset cannot accumulate")
    assert(g.camera.global_position.distance_to(f.muzzle_world(muzzle))<1,"Framing cannot move physical shots below the player's feet")
   assert(g.rules.round_index==initial_round)
- # The harvesting palm also stays inside the narrow portrait weapon camera.
+ # Harvest presentation is removed; weapon hands keep their existing framing.
  g._show("play");g.rules.players[g.local_id]["suction"]=1.6;g.hand_amount=1;g._tick_viewmodel(.016)
- var palm: Vector2=g.weapon_frame.view_camera.unproject_position(g.hand_root.global_position)
- var view_size: Vector2=Vector2(g.weapon_frame.viewport.size)
- assert(palm.x/view_size.x>.10 and palm.x/view_size.x<.40 and palm.y/view_size.y>.6 and palm.y/view_size.y<.9,"Harvesting hand remains visible in portrait")
+ assert(not g.hand_root.visible and g.hand_root.get_child_count()==0 and not g.hud_ui.essence.visible,"No harvesting hand or button")
  # Classic reload still fully lowers the gun in the portrait weapon pass.
  var p: Dictionary=g.rules.players[g.local_id]
  p["reload"]=1.4;p["reload_total"]=2.8

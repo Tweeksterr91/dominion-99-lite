@@ -352,7 +352,7 @@ func _show_controller_help() -> void:
 	var stick_guide := "RIGHT STICK / D-PAD: CHOOSE ROUTE\nLEFT STICK: AIM / AUTO FIRE" if pad_input.swap_sticks else "LEFT STICK / D-PAD: CHOOSE ROUTE\nRIGHT STICK: AIM / AUTO FIRE"
 	if pad_input.free_movement:stick_guide=stick_guide.replace("CHOOSE ROUTE","MOVE / STRAFE")
 	var guide := "%s\n%s\n%s\nRT: MANUAL FIRE (AUTO FIRE ALSO ON)   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
-	if pad_input.free_movement:guide=guide.replace("LT: 180°","LT: HOLD TO LOCK / CHARGE TO GREEN")
+	if pad_input.free_movement:guide=guide.replace("LT: 180°","LT: HOLD TO LOCK / CHARGE TO GREEN").replace("AIM / AUTO FIRE","AIM (RT TO FIRE)").replace("(AUTO FIRE ALSO ON)","(AUTO FIRE IS TOUCH-AIM ONLY)")
 	_show("controller_help",{"guide":guide})
 
 func _controller_mode(active: bool) -> void:
@@ -730,6 +730,7 @@ func _pause() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:
 		app_paused = true
+		touch_aim = -1
 		if is_instance_valid(pad_input):pad_input.clear_axes()
 		if screen=="play":_pause()
 		if is_instance_valid(shot_sound):shot_sound.stop()

@@ -31,6 +31,7 @@ func run() -> void:
  check(g._lock_rect().has_area(),"Amber target bracket rectangle projects from actual target")
  for i in range(5):g.pad_input.step(.04);g._tick_locks(1.0/60)
  check(g._lock_progress(0)==1 and g._can_shoot(0),"Green acquisition ring enables firing")
+ g._tick_auto_combat(.016);check(p["ammo"]==5,"Charged controller lock still requires RT")
  g._fire_weapon(0);check(p["ammo"]==4,"Charged lock can shoot")
  axis(JOY_AXIS_TRIGGER_LEFT,0);p["fire_cd"]=0
  check(g.lock_states[0]["ttl"]==0 and g._can_shoot(0),"Releasing LT immediately restores ordinary shooting")

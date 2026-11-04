@@ -1,9 +1,13 @@
-# v0.9.2 — Portrait weapon perspective
+# v0.10.0 — Touch Fire & Killer Souls
 
-Corrects the overly small, low shotgun from v0.9.1. The weapon now uses a full-screen portrait projection with a fixed vertical field of view. The barrel’s perspective converges on the real crosshair instead of a point near the bottom edge. A tuned side/depth offset shows the barrel, pump, receiver and supporting hand while cropping excess forearm. Landscape keeps its existing pose and renderer.
+- Auto-fire is available only while holding a touchscreen aiming touch. Controller/mouse aim requires manual shooting (RT / left mouse button). A charged LT lock still requires RT on a controller. Aim-touch release, input switching, pause/backgrounding and missing network heartbeats cancel auto-fire. Movement and HUD touches do not enable it.
+- Shooting effects play at half their previous amplitude, including the pump cycle and distant player/bot/minion shots. Reload effects, music, ambience and saved volume settings stay independent.
+- Removed the soul-harvesting hand, touchscreen button, controller B harvest binding and keyboard E action. Weapon hands remain.
+- Minion orbs automatically fly to the fighter who lands the killing shot. Claimed blue/gold orbs cannot be stolen or destroyed; they credit the killer on arrival. The reward stays with that fighter even if they die. Pending rewards settle before the shop, and particles/ownership/currency replicate from the host. Gold treasure kills still award 90 souls. The obsolete pull-range gift now grants +1 m lock range as TARGET REACH.
+- Rival bot ground movement reduced from 5.0 to 3.2 m/s; minions move 15% slower. Player speed stays unchanged. Bots retain brief jump assistance to cross optional platforms.
 
-Updated portrait previews include tall-phone and standard portrait aspect ratios. Projection checks now enforce visible muzzle and receiver positions, center the barrel’s vanishing point, and verify displayed/physical muzzle alignment, rotation and complete reload lowering. Existing free-movement/projectile, lock-on, touch-control and menu checks pass.
+Install `dominion-99-lite.apk` over the existing installation. Same package and signing certificate; versionCode 15. **All LAN players must update to v0.10.0** (protocol 10).
 
-Download `dominion-99-lite.apk` and install over the existing game. Same package and signing certificate, versionCode 14. LAN protocol remains 9, compatible with v0.9.0 and v0.9.1.
+Validated: real touch/controller input transitions, manual RT, auto-fire release/timeout, measured shooting gains, removed harvesting presentation, killing-shot ownership, automatic blue/gold collection, theft/denial protection, dead-killer and phase-end reward settlement, slower physical bot movement, portrait/landscape weapon framing, reloads, navigation, rules and UI. Two real local game processes verify touch/manual shooting and killer rewards between portrait guest and landscape host, alongside full 4v4 phase/economy and optional-lock integration checks. Physical Android/Backbone feel, audio balance and performance still need device testing.
 
-The screenshots and checks were produced in-engine. Android hardware appearance/performance still needs device testing. Original code: MIT; component asset licenses and credits are in ASSET_CREDITS.md.
+Original code/audio/art: MIT; full component attribution and licenses are in ASSET_CREDITS.md.

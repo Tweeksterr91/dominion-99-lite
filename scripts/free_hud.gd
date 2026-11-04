@@ -12,11 +12,10 @@ func _ready() -> void:
 func _layout_combat() -> void:
 	super._layout_combat()
 	for button in routes.values():button.hide()
-	down.hide();reverse.hide()
+	down.hide();reverse.hide();essence.hide()
 	if not is_instance_valid(stick):return
 	_place(stick,Vector2(0,1),Vector2(22+safe_margins.x,-325),Vector2(160,160))
 	_place(jump,Vector2(1,1),Vector2(-95-safe_margins.z,-255),Vector2(72,72))
-	_place(essence,Vector2(1,1),Vector2(-177-safe_margins.z,-255),Vector2(68,68))
 	_place(lock_button,Vector2(0,1),Vector2(67+safe_margins.x,-410),Vector2(70,70))
 	lock_button.visible=not controller_mode
 	stick.visible=not controller_mode
@@ -25,7 +24,7 @@ func _layout_combat() -> void:
 func set_controller_mode(value: bool,help_text := "") -> void:
 	super.set_controller_mode(value,help_text)
 	for button in routes.values():button.hide()
-	down.hide();reverse.hide()
+	down.hide();reverse.hide();essence.hide()
 	if is_instance_valid(stick):stick.visible=not value
 	if is_instance_valid(lock_button):
 		lock_button.visible=not value
