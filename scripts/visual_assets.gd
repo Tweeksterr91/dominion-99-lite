@@ -2,6 +2,10 @@ extends RefCounted
 ## Original low-poly asset kit. Static boxes share materials and GPU instance batches.
 
 const METAL_SHADER = preload("res://assets/metal.gdshader")
+const WARDEN = preload("res://assets/models/warden.glb")
+const SIDEARM = preload("res://assets/models/sidearm.glb")
+const SKIN = preload("res://assets/skin.gdshader")
+var character_materials: Dictionary = {}
 const PALETTE := {
 	"iron": Color("344250"), "dark": Color("18212c"),
 	"plate": Color("526273"), "rust": Color("66473f"),
@@ -231,49 +235,54 @@ func _sign(parent: Node3D, text: String, pos: Vector3, yaw: float, font_size: in
 	label.no_depth_test = false
 
 func build_weapon(parent: Node3D) -> void:
-	# D-9 pulse sidearm: armored receiver, exposed energy spine, and muzzle cage.
-	_part(parent, Vector3(0.22, -0.24, -0.45), Vector3(0.18, 0.17, 0.43), "dark")
-	_part(parent, Vector3(0.22, -0.19, -0.47), Vector3(0.16, 0.08, 0.45), "plate")
-	_part(parent, Vector3(0.22, -0.32, -0.32), Vector3(0.12, 0.25, 0.15), "iron", -0.12)
-	_part(parent, Vector3(0.22, -0.145, -0.50), Vector3(0.045, 0.025, 0.28), "cyan")
-	_part(parent, Vector3(0.22, -0.23, -0.71), Vector3(0.14, 0.14, 0.12), "iron")
-	_part(parent, Vector3(0.22, -0.23, -0.775), Vector3(0.09, 0.08, 0.018), "dark")
-	_part(parent, Vector3(0.22, -0.23, -0.79), Vector3(0.04, 0.035, 0.008), "cyan")
-	for i in range(4):
-		_part(parent, Vector3(0.315, -0.23, -0.37 - i * 0.065), Vector3(0.012, 0.055, 0.025), "cyan")
-	for side in [-1.0, 1.0]:
-		_part(parent, Vector3(0.22 + side * 0.085, -0.21, -0.63), Vector3(0.035, 0.14, 0.16), "rust")
-	_part(parent, Vector3(0.22, -0.13, -0.31), Vector3(0.06, 0.04, 0.045), "dark")
-	_part(parent, Vector3(0.22, -0.115, -0.31), Vector3(0.025, 0.012, 0.016), "amber")
-	# Gloved hand and armored sleeve, attached to the viewmodel.
-	_part(parent, Vector3(0.235, -0.38, -0.29), Vector3(0.14, 0.13, 0.20), "dark", -0.1)
-	_part(parent, Vector3(0.27, -0.46, -0.19), Vector3(0.18, 0.18, 0.27), "iron", -0.12)
-	_part(parent, Vector3(0.27, -0.365, -0.19), Vector3(0.14, 0.025, 0.18), "plate")
-	_pack_model(parent)
+	var model := SIDEARM.instantiate()
+	model.name = "DetailedSidearm"
+	parent.add_child(model)
+	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.layers = 2
 
 func build_enemy(parent: Node3D) -> void:
-	# Warden: readable pale armor, broad shoulders, crimson visor, and energy rifle.
-	_part(parent, Vector3(0, 1.04, 0), Vector3(0.56, 0.68, 0.39), "iron")
-	_part(parent, Vector3(0, 1.13, -0.22), Vector3(0.48, 0.36, 0.08), "bone")
-	_part(parent, Vector3(0, 1.16, -0.27), Vector3(0.10, 0.24, 0.025), "red")
-	_part(parent, Vector3(0, 0.67, 0), Vector3(0.43, 0.16, 0.36), "dark")
-	_part(parent, Vector3(0, 1.6, 0), Vector3(0.44, 0.4, 0.42), "dark")
-	_part(parent, Vector3(0, 1.75, 0.01), Vector3(0.49, 0.10, 0.46), "bone")
-	_part(parent, Vector3(0, 1.62, -0.22), Vector3(0.39, 0.075, 0.035), "red")
-	for side in [-1.0, 1.0]:
-		_part(parent, Vector3(side * 0.37, 1.25, 0), Vector3(0.25, 0.27, 0.46), "bone", side * -0.16)
-		_part(parent, Vector3(side * 0.37, 0.95, -0.03), Vector3(0.18, 0.40, 0.21), "dark")
-		_part(parent, Vector3(side * 0.15, 0.38, 0), Vector3(0.22, 0.56, 0.27), "iron")
-		_part(parent, Vector3(side * 0.15, 0.40, -0.15), Vector3(0.18, 0.22, 0.06), "bone")
-		_part(parent, Vector3(side * 0.15, 0.10, -0.08), Vector3(0.26, 0.18, 0.42), "dark")
-	_part(parent, Vector3(0, 1.06, 0.27), Vector3(0.38, 0.50, 0.18), "rust")
-	_part(parent, Vector3(0.35, 1.01, -0.38), Vector3(0.16, 0.18, 0.60), "dark")
-	_part(parent, Vector3(0.35, 1.04, -0.45), Vector3(0.18, 0.06, 0.35), "plate")
-	_part(parent, Vector3(0.35, 1.01, -0.69), Vector3(0.07, 0.08, 0.02), "red")
-	_pack_model(parent)
-	var flash := _part(parent, Vector3(0.35, 1.01, -0.76), Vector3(0.14, 0.14, 0.16), "red")
+	var model := WARDEN.instantiate()
+	model.name = "Creature"
+	model.rotation.y = PI
+	parent.add_child(model)
+	for mesh in model.find_children("*", "MeshInstance3D", true, false):
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		for surface in range(mesh.mesh.get_surface_count()):
+			var original: Material = mesh.get_active_material(surface)
+			if original is StandardMaterial3D and ("body" in original.resource_name.to_lower() or "clothes" in original.resource_name.to_lower()):
+				var key := original.resource_name
+				if not character_materials.has(key):
+					var skin := ShaderMaterial.new()
+					skin.shader = SKIN
+					skin.set_shader_parameter("albedo_tex", original.albedo_texture)
+					skin.set_shader_parameter("tint", Color("9aa6ac") if "body" in key.to_lower() else Color("555c66"))
+					character_materials[key] = skin
+				mesh.set_surface_override_material(surface, character_materials[key])
+	var animation: AnimationPlayer = model.find_child("AnimationPlayer", true, false)
+	if animation:
+		var clips: Dictionary = {}
+		for clip in animation.get_animation_list():
+			for name in ["Run", "Idle", "Jump"]:
+				if clip.ends_with(name):
+					clips[name] = clip
+					animation.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+		parent.set_meta("animation", animation)
+		parent.set_meta("clips", clips)
+		animate_enemy(parent, "Run")
+	parent.set_meta("model", model)
+	var flash := _part(parent, Vector3(0.35, 1.01, -0.76), Vector3(0.12, 0.12, 0.16), "red")
 	flash.name = "MuzzleFlash"
 	flash.visible = false
+
+func animate_enemy(enemy: Node3D, state: String) -> void:
+	if not enemy.has_meta("animation"):
+		return
+	var player: AnimationPlayer = enemy.get_meta("animation")
+	var clips: Dictionary = enemy.get_meta("clips")
+	if clips.has(state) and player.current_animation != clips[state]:
+		player.play(clips[state], 0.12)
 
 func build_pickup(parent: Node3D, pos: Vector3, kind: String) -> Node3D:
 	var item := Node3D.new()

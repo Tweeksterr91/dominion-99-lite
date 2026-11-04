@@ -2,11 +2,15 @@
 
 A modern take on the classic fps arena shooter, with a bit more depth.
 
-**[Download Android APK — v0.2.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.2.0/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download Android APK — v0.3.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.3.0/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 A portrait auto-runner FPS for Android. Movement, firing, and reloading happen automatically; the player concentrates on aim, route choices, jumps, double jumps, and drops. This is an **offline development prototype with bots**, not online multiplayer.
 
 ![In-engine auto-runner preview](docs/preview.png)
+
+The v0.3.0 visual foundation uses scanned 1K surface maps, a modeled sidearm, an imported rigged creature, running/jumping animations, smoother scenery, environment reflections, and directional shadows. This is a move toward a more grounded look, not a finished photorealistic art set. A short gameplay animation preview is included in the release assets.
+
+[Asset credits and licenses](ASSET_CREDITS.md)
 
 ## Install on your phone
 
@@ -29,7 +33,7 @@ Desktop controls: mouse aim, A/Left or D/Right for a queued turn, W/Up for ahead
 
 ## Biomes
 
-Each biome has a different connected layout built from a shared 25-junction grid, with loops, crossings, and routes at different heights. These are initial low-poly environment treatments.
+Each biome has a different connected layout built from a shared 25-junction grid, with loops, crossings, and routes at different heights. These are initial modular environment treatments using scanned materials. Their layout and scenery still need further art refinement.
 
 | Biome | Environment | Preview |
 | --- | --- | --- |
@@ -47,11 +51,15 @@ Install the official Godot Editor for Android from Google Play or https://godote
 - `scripts/corridor_map.gd`: connected biome layouts, floors, walls, jump gaps, and scenery.
 - `scripts/runner_reticle.gd`: target-reactive crosshair.
 - `scripts/main.gd`: reusable combat, shield, audio, weapon, pickup, and UI helpers; also retains the older arena implementation for reference.
-- `scripts/visual_assets.gd`: original weapon, enemy, and pickup models.
-- `assets/stone.gdshader` and `assets/metal.gdshader`: original procedural surfaces.
+- `scripts/visual_assets.gd`: imported weapon/creature scene setup, animation playback, and pickup kit.
+- `assets/models/sidearm.glb`: original modeled sidearm and glove.
+- `assets/models/warden.glb`: adapted Sinbad creature with a skeleton and running, idle, and jump clips.
+- `art_sources/`: Blender asset builders and conversion tools; I can maintain these for you.
+- `assets/textures/`: scanned ambientCG color/normal/roughness maps and Poly Haven lighting panorama.
+- `assets/skin.gdshader`: grounded material tinting for the imported character. The older procedural surface shaders remain for the legacy kit.
 - `docs/ART_DIRECTION.md`: visual design notes.
 
-Built with Godot 4.6.3, Compatibility renderer, simple batched geometry, and no real-time shadows. The game has a fixed **60 FPS cap**; actual performance still needs testing on the OnePlus 12R.
+Built with Godot 4.6.3, Compatibility renderer, batched scenery, mipmapped surface textures, 2x anti-aliasing, and a single short-range directional shadow map. Character animation pauses with gameplay. The menu has an ART CREDITS view. The game has a fixed **60 FPS cap**; actual performance still needs testing on the OnePlus 12R.
 
 ## Validation
 
@@ -62,10 +70,10 @@ godot --headless --path . --script tests/runner_smoke.gd
 godot --headless --path . --script tests/traversal.gd
 ```
 
-The first checks auto reload, crosshair-triggered fire, two-thumb controls, all five connected/different layouts, shared bot routes, shield, portrait HUD, pause, and restart. The second checks real physics traversal: automatic running, a queued corner, single jump, double jump, and drop. `tests/smoke.gd` checks the older shared combat/arena base.
+The first checks auto reload, crosshair-triggered fire, two-thumb controls, all five connected/different layouts, shared bot routes, actual skeletal joint motion, animation pause, credits navigation, shield, portrait HUD, pause, and restart. The second checks real physics traversal: automatic running, a queued corner, single jump, double jump, and drop. `tests/smoke.gd` checks the older shared combat/arena base.
 
 ## Future APK updates
 
 Use a new numbered GitHub Release for each APK and increase `version/code` and `version/name` in `export_presets.cfg`. Keep using the original signing key for development updates. Keys and credentials stay outside the repository. This is a development-signed build; store distribution needs release signing.
 
-Original code and assets use the MIT license. Godot and its bundled fonts retain their own licenses. The project name has not been checked for trademark availability.
+Original code, the sidearm, and generated scenery use MIT. The adapted Sinbad model/textures use CC BY-SA 3.0; scanned textures and the lighting panorama are CC0. See ASSET_CREDITS.md and the in-game ART CREDITS view. Godot and bundled fonts retain their own licenses. The project name has not been checked for trademark availability.

@@ -50,6 +50,20 @@ func verify() -> void:
  start_touch.pressed = true
  game._input(start_touch)
  check(game.running, "Touch starts the game without mouse emulation")
+ var animated_bot = game.enemies[0]
+ check(animated_bot.has_meta("animation"), "Imported enemy has an animation player")
+ var animation = animated_bot.get_meta("animation")
+ check(animated_bot.get_meta("clips").has_all(["Run", "Idle", "Jump"]), "Rigged enemy provides running, idle, and jumping clips")
+ var skeleton = animated_bot.get_meta("model").find_children("*", "Skeleton3D", true, false)[0]
+ animation.seek(0, true)
+ var first_pose: Array = []
+ for i in range(skeleton.get_bone_count()):
+  first_pose.append(skeleton.get_bone_pose_rotation(i))
+ animation.seek(0.23, true)
+ var changed = false
+ for i in range(skeleton.get_bone_count()):
+  changed = changed or not first_pose[i].is_equal_approx(skeleton.get_bone_pose_rotation(i))
+ check(changed, "Animation changes actual skeleton joint poses")
  var options = game._options()
  check(options.has("left") and options.has("ahead") and options.has("right"), "First junction offers routes")
  game._choose("left")
@@ -122,9 +136,14 @@ func verify() -> void:
  game._jump()
  check(game.jumps == 2, "No third jump")
  game._pause()
+ check(not game.enemies[0].get_meta("animation").active, "Pause stops character animation")
  var prior = game.player.position
  game._physics_process(5)
  check(game.player.position == prior and not game.running, "Pause stops auto-run")
+ game._show_credits()
+ check(game.credits_open and not game.biome_button.visible, "Credits are accessible from menu")
+ game._start()
+ check(not game.credits_open and not game.running, "Credits BACK returns to menu without starting play")
  # Biomes all build real geometry and preserve the graph.
  var layouts: Array[String] = []
  for theme in range(5):

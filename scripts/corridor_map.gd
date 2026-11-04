@@ -19,13 +19,20 @@ var batches: Dictionary = {}
 var materials: Array[Material] = []
 var box := BoxMesh.new()
 var leaf := SphereMesh.new()
+var canopy: ArrayMesh
+var column := CylinderMesh.new()
 
 func _init() -> void:
 	box.size = Vector3.ONE
 	leaf.radius = 0.5
 	leaf.height = 1.0
-	leaf.radial_segments = 6
-	leaf.rings = 3
+	leaf.radial_segments = 32
+	leaf.rings = 16
+	column.top_radius = 0.5
+	column.bottom_radius = 0.5
+	column.height = 1
+	column.radial_segments = 24
+	canopy = _leaf_cluster()
 	for z in range(5):
 		for x in range(5):
 			var height := 0.0
@@ -47,6 +54,41 @@ func _connect(a: int, b: int) -> void:
 		links[a].append(b)
 	if a not in links[b]:
 		links[b].append(a)
+
+func _leaf_cluster() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var random := RandomNumberGenerator.new()
+	random.seed = 9903
+	for i in range(256):
+		var center := Vector3(random.randf_range(-0.45, 0.45), random.randf_range(-0.4, 0.4), random.randf_range(-0.45, 0.45))
+		if center.length() > 0.5:
+			center = center.normalized() * 0.45
+		var yaw := random.randf_range(-PI, PI)
+		var basis := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, random.randf_range(-0.7, 0.7))
+		var points := [Vector3(0, 0, -0.04), Vector3(-0.018, 0, 0), Vector3(0, 0.003, 0), Vector3(0.018, 0, 0), Vector3(0, 0, 0.04)]
+		var leaf_color := Color.WHITE * random.randf_range(0.78, 1.05)
+		for triangle in [[0, 1, 2], [0, 2, 3], [4, 2, 1], [4, 3, 2]]:
+			for id in triangle:
+				st.set_normal(basis * Vector3.UP)
+				st.set_color(leaf_color)
+				st.add_vertex(center + basis * points[id])
+	return st.commit()
+
+func _surface(kind: String, color: Color, tiling := 0.65) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = load("res://assets/textures/%s/albedo.jpg" % kind)
+	mat.normal_enabled = true
+	mat.normal_texture = load("res://assets/textures/%s/normal.jpg" % kind)
+	mat.normal_scale = 0.8
+	mat.roughness_texture = load("res://assets/textures/%s/roughness.jpg" % kind)
+	mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	mat.albedo_color = color
+	mat.uv1_triplanar = true
+	mat.uv1_world_triplanar = true
+	mat.uv1_scale = Vector3.ONE * tiling
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return mat
 
 func _layout(theme: int) -> void:
 	links.clear()
@@ -82,15 +124,21 @@ func build(parent: Node3D, theme: int) -> Node3D:
 	root.name = "BiomeCorridors"
 	parent.add_child(root)
 	materials.clear()
-	for i in range(4):
-		var mat := ShaderMaterial.new()
-		mat.shader = STONE
-		mat.set_shader_parameter("stone_color", THEMES[biome][i])
-		materials.append(mat)
+	var ground := "earth" if biome in [0, 3] else ("sand" if biome == 4 else "rock")
+	materials.append(_surface(ground, Color("a8b8a2") if biome in [0, 3] else Color("c1bdaf")))
+	materials.append(_surface("masonry" if biome == 0 else "rock", THEMES[biome][1].lightened(0.38)))
+	materials.append(_surface("bark" if biome in [0, 3] else "rock", Color("9d9a87")))
+	materials.append(_surface("rock", THEMES[biome][3].lightened(0.2)))
 	var glow := StandardMaterial3D.new()
 	glow.albedo_color = Color("e76c2c") if biome == 2 else Color("365c79")
 	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	materials.append(glow)
+	var leaves := StandardMaterial3D.new()
+	leaves.albedo_color = Color("354e29")
+	leaves.vertex_color_use_as_albedo = true
+	leaves.cull_mode = BaseMaterial3D.CULL_DISABLED
+	leaves.roughness = 0.95
+	materials.append(leaves)
 	for i in range(nodes.size()):
 		_room(i)
 		for next in links[i]:
@@ -100,22 +148,24 @@ func build(parent: Node3D, theme: int) -> Node3D:
 		var data: Dictionary = batches[key]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = leaf if data["leaf"] else box
+		mm.mesh = {"leaves": canopy, "mound": leaf, "column": column, "box": box}[data["shape"]]
 		mm.instance_count = data["transforms"].size()
 		for i in range(mm.instance_count):
 			mm.set_instance_transform(i, data["transforms"][i])
 		var instance := MultiMeshInstance3D.new()
 		instance.multimesh = mm
 		instance.material_override = materials[data["surface"]]
-		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		root.add_child(instance)
 	batches.clear()
 	return root
 
 func _piece(pos: Vector3, size: Vector3, surface: int, solid := false, foliage := false, yaw := 0.0) -> void:
-	var key := str(surface) + ("leaf" if foliage else "box")
+	var shape_kind := "leaves" if foliage and surface == 2 else ("mound" if foliage else ("column" if size.y > 2.7 and size.x < 1.0 and size.z < 1.0 else "box"))
+	var material := 5 if shape_kind == "leaves" else surface
+	var key := str(material) + shape_kind
 	if not batches.has(key):
-		batches[key] = {"surface": surface, "leaf": foliage, "transforms": []}
+		batches[key] = {"surface": material, "shape": shape_kind, "transforms": []}
 	batches[key]["transforms"].append(Transform3D(Basis(Vector3.UP, yaw).scaled(size), pos))
 	if solid:
 		var body := StaticBody3D.new()

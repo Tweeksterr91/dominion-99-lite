@@ -29,6 +29,8 @@ var notice := ""
 var notice_left := 0.0
 var has_started := false
 var touch_aim := -1
+var credits_button: Button
+var credits_open := false
 
 func _ready() -> void:
 	Engine.max_fps = 60
@@ -44,14 +46,23 @@ func _build_course() -> void:
 	if environment == null:
 		var world := WorldEnvironment.new()
 		environment = Environment.new()
+		var sky := Sky.new()
+		var panorama := PanoramaSkyMaterial.new()
+		panorama.panorama = load("res://assets/textures/lighting/kiara_1_dawn_1k.hdr")
+		sky.sky_material = panorama
+		sky.radiance_size = Sky.RADIANCE_SIZE_128
+		environment.sky = sky
+		environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 		world.environment = environment
 		add_child(world)
 		var sun := DirectionalLight3D.new()
 		sun.rotation_degrees = Vector3(-55, -35, 0)
 		sun.light_energy = 1.0
-		sun.shadow_enabled = false
+		sun.shadow_enabled = true
+		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+		sun.directional_shadow_max_distance = 22.0
 		add_child(sun)
-	environment.background_mode = Environment.BG_COLOR
+	environment.background_mode = Environment.BG_SKY if biome >= 3 else Environment.BG_COLOR
 	environment.background_color = CorridorMap.THEMES[biome][4]
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("b6c9bf")
@@ -59,6 +70,7 @@ func _build_course() -> void:
 	environment.fog_enabled = true
 	environment.fog_light_color = CorridorMap.THEMES[biome][4]
 	environment.fog_density = 0.012
+	environment.fog_sky_affect = 0.2
 	course_root = course.build(self, biome)
 
 func _reset_run() -> void:
@@ -168,14 +180,30 @@ func _make_ui() -> void:
 	menu_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	biome_button = _button(menu, "", Vector2(30, 410), Vector2(424, 64), _cycle_biome)
 	start_button = _button(menu, "START RUN", Vector2(54, 504), Vector2(376, 64), _start)
+	credits_button = _button(menu, "ART CREDITS", Vector2(144, 582), Vector2(196, 28), _show_credits)
+	credits_button.add_theme_font_size_override("font_size", 13)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _show_menu(title: String, body: String, action: String) -> void:
 	super._show_menu(title, body, action)
+	credits_open = false
+	biome_button.show()
+	credits_button.show()
 	touch_aim = -1
+	for enemy in enemies:
+		if enemy.has_meta("animation"):
+			enemy.get_meta("animation").active = false
 	biome_button.disabled = false
 	biome_button.text = "BIOME: " + CorridorMap.NAMES[biome]
 	_update_choices()
+
+func _show_credits() -> void:
+	credits_open = true
+	menu_title.text = "ART CREDITS"
+	menu_body.text = "Sinbad creature: © Zi Ye\nCC BY-SA 3.0 / adapted model\ncreativecommons.org/licenses/by-sa/3.0/\n\nTextures: ambientCG / CC0\nSky: Poly Haven / CC0\n\nWeapon and other code: Dominion '99\nFull credits: repository ASSET_CREDITS.md"
+	biome_button.hide()
+	credits_button.hide()
+	start_button.text = "BACK"
 
 func _cycle_biome() -> void:
 	biome = (biome + 1) % CorridorMap.NAMES.size()
@@ -185,11 +213,17 @@ func _cycle_biome() -> void:
 	_show_menu("NEW RUN", "Choose your next biome.\n\nDrag to aim / automatic fire and reload.\nQueue turns at the next junction.\nTime jumps at the marked ledges.\n\nYour new run starts with full supplies.", "START RUN")
 
 func _start() -> void:
+	if credits_open:
+		_show_menu("DOMINION '99", "AUTO-RUN / ROUTE COMBAT\n\nDrag to aim at bots to auto-fire.\nYour weapon reloads automatically.\nChoose your route and time your jumps.\n\nOffline bots share your hallways.", "RESUME" if has_started and not finished else "START RUN")
+		return
 	if finished:
 		_reset_run()
 	menu.hide()
 	running = true
 	has_started = true
+	for enemy in enemies:
+		if enemy.has_meta("animation"):
+			enemy.get_meta("animation").active = true
 	_update_choices()
 	if not OS.has_feature("mobile"):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -234,9 +268,9 @@ func _input(event: InputEvent) -> void:
 
 func _touch_button(point: Vector2) -> bool:
 	# Handle each touch directly so a second thumb can turn/jump while aiming.
-	var controls: Array = [start_button, biome_button] if menu.visible else route_buttons.values() + [jump_button, down_button, pause_button]
+	var controls: Array = [start_button, biome_button, credits_button] if menu.visible else route_buttons.values() + [jump_button, down_button, pause_button]
 	for control in controls:
-		if control.get_global_rect().has_point(point):
+		if control.is_visible_in_tree() and control.get_global_rect().has_point(point):
 			if not control.disabled:
 				control.pressed.emit()
 			return true
@@ -323,6 +357,9 @@ func _physics_process(delta: float) -> void:
 	damage.color.a = hurt * 0.7
 	recoil = move_toward(recoil, 0, delta * 0.8)
 	gun.position.z = recoil
+	gun.position.y = sin(distance_run * 5.0) * 0.003
+	gun.rotation.x = -recoil * 0.55
+	gun.rotation.z = -sin(clampf(reload_left / 1.25, 0, 1) * PI) * 0.35
 	notice_left = maxf(0, notice_left - delta)
 	_tick_auto_reload(delta)
 	_run_forward(delta)
@@ -435,6 +472,8 @@ func _spawn_bot(node: int) -> void:
 	col.position.y = 0.9
 	enemy.add_child(col)
 	art.build_enemy(enemy)
+	if enemy.has_meta("animation"):
+		enemy.get_meta("animation").active = running
 	var next: int = course.links[node][0]
 	enemy.position = course.nodes[node]
 	enemy.set_meta("from", node)
@@ -469,6 +508,7 @@ func _tick_enemies(delta: float) -> void:
 		enemy.position = course.nodes[a].lerp(course.nodes[b], progress) + side * 0.55
 		if course.climb(a, b) > 0:
 			enemy.position.y += sin(progress * PI) * (2.0 if course.climb(a, b) == 2 else 1.0)
+		art.animate_enemy(enemy, "Jump" if course.climb(a, b) > 0 and progress > 0.25 and progress < 0.8 else "Run")
 		enemy.rotation.y = atan2(-dir.x, -dir.z)
 		var muzzle := maxf(0, float(enemy.get_meta("muzzle")) - delta)
 		var attack := float(enemy.get_meta("attack")) - delta

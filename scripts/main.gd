@@ -111,13 +111,19 @@ func _make_player() -> void:
 	gun = Node3D.new()
 	camera.add_child(gun)
 	art.build_weapon(gun)
+	var fill := OmniLight3D.new()
+	fill.light_energy = 0.55
+	fill.omni_range = 1.5
+	fill.light_cull_mask = 2
+	fill.position = Vector3(0, 0.1, -0.2)
+	camera.add_child(fill)
 	flash = MeshInstance3D.new()
 	var flash_mesh := SphereMesh.new()
 	flash_mesh.radius = 0.10
 	flash_mesh.height = 0.18
 	flash.mesh = flash_mesh
 	flash.material_override = art.materials["cyan"]
-	flash.position = Vector3(0.22, -0.23, -0.83)
+	flash.position = Vector3(0.15, -0.187, -0.76)
 	gun.add_child(flash)
 	flash.visible = false
 

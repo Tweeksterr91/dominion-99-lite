@@ -1,28 +1,26 @@
-# Dominion '99 (Lite) — v0.2.0
+# Dominion '99 (Lite) — v0.3.0
 
-First auto-runner FPS build with contextual route choices and biome corridors.
+First visual foundation toward a more realistic dark sci-fi game.
 
-## Mechanics
+## Graphics and animation
 
-- Automatic forward running, firing when the crosshair is on a visible bot, and reloads when the magazine empties.
-- Removed the movement pad, manual fire button, and reload button.
-- Drag to aim while another thumb chooses LEFT, AHEAD, RIGHT, JUMP, or DOWN.
-- Queue a direction for the next junction; DOWN selects an available descending hallway.
-- Real single jumps, midair double jumps, raised landing platforms, and drops. Watch the ledge-distance cue and time takeoff.
-- Six bots travel the same connected hallways, cross junctions, fight on sight, and respawn after defeat.
-- Endless runs track distance, junctions, and kills. A missed landing/block returns to the hallway start and costs 25 shield/health.
+- Scanned 1K color, normal, and roughness maps for stone, masonry, ground, bark, and sand, with smooth filtering and world-space tiling.
+- An imported textured creature replaces the rigid box-built enemies. Its real skeleton plays running, idle, and jumping clips; the model is an adapted Sinbad asset by Zi Ye.
+- A newly modeled, beveled sidearm with barrel details, a grip, a glove, recoil, running movement, and automatic-reload tilt.
+- Rounded columns and trunks, smoother dunes, and individual leaf-shaped foliage instead of solid canopy blobs.
+- HDR environment reflections, outdoor sky, short-range directional shadows, and 2x edge anti-aliasing.
+- ART CREDITS in the menu and asset licenses in the repository.
 
-## Maps and HUD
+This is a foundation, not finished photorealism. The character is a licensed fantasy creature, and the modular scenery still needs further art refinement. These changes provide a working model/animation/material pipeline that can accept better production assets without requiring you to model or animate.
 
-- Five initial biome treatments with different connected layouts: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast.
-- Replaced facility energy rails with stone, moss, basalt, trees, dunes, and coastal colors.
-- New crosshair reacts to targets and hits.
-- Portrait orientation, fixed 60 FPS cap, lower-left health/shield, and lower-right ammo remain.
+## Preserved mechanics
 
-This version is offline with bots. Online player encounters are not implemented. The environments are an initial low-poly pass; actual OnePlus 12R frame rate remains unmeasured.
+Portrait, auto-run, aim-triggered fire, auto-reload, contextual route choices, jumps/double jumps, drops, shared-corridor bots, the fixed 60 FPS cap, and the lower-corner health/shield/ammo HUD remain. This build is offline.
 
-## Validation and update
+## Verification and update
 
-Automated checks cover all five connected/different layouts, shared bot traversal, auto-fire targeting, auto-reload, two-thumb input, shield, portrait HUD, pause/restart, and real-physics single jump, double jump, drop, and queued turn. All five biome shaders were checked in rendered desktop captures.
+Checked actual skeletal joint movement, animation pause, combat, controls, credits navigation, all biome layouts, HUD, and collision traversal. All five biomes were rendered, and a five-second gameplay preview is included. Rendering cost has increased; actual frame rate still needs checking on the OnePlus 12R. The 60 FPS cap is a target, not a measured guarantee.
 
-Download `dominion-99-lite.apk` from Assets and install over your current version. The package and signing key are unchanged; Android version code is 5. Requires Android 7.0 or newer on ARM64. This is a development build.
+Download `dominion-99-lite.apk` from Assets and install over your current version. The original package and signing key are preserved; Android version code is 6. Android 7.0 or newer on ARM64 is required. This is a development build.
+
+Creature model: Sinbad © Zi Ye, adapted under CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/). Scanned surfaces: ambientCG, CC0. Lighting: Poly Haven, CC0. Gameplay previews containing Sinbad are CC BY-SA 3.0. Full attribution and modification details: ASSET_CREDITS.md in the repository.
