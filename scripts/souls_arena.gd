@@ -281,7 +281,7 @@ func _ui_action(kind: String,value: Variant) -> void:
 			pad_input.capture = ""
 			_show_controller_options()
 		"controller_reset":
-			pad_input.bindings = Controller.DEFAULTS.duplicate()
+			pad_input.bindings = pad_input.default_bindings()
 			pad_input.sensitivity=1.0
 			pad_input.deadzone=.18
 			pad_input.swap_sticks=false
@@ -334,7 +334,7 @@ func _load_controller_settings() -> void:
 
 func _show_controller_options() -> void:
 	var entries: Array=[{"text":"STICK AIM / %d%%" % roundi(pad_input.sensitivity*100),"kind":"controller_sensitivity"},{"text":"DEADZONE / %d%%" % roundi(pad_input.deadzone*100),"kind":"controller_deadzone"},{"text":"SWAP STICKS / %s" % ("ON" if pad_input.swap_sticks else "OFF"),"kind":"controller_swap"}]
-	for action in Controller.DEFAULTS:
+	for action in pad_input.bindings:
 		entries.append({"text":"%s / %s" % ["HARVEST" if action=="suction" else action.to_upper(),pad_input.button_name(pad_input.bindings[action])],"kind":"controller_bind","value":action})
 	entries.append({"text":"RESTORE DEFAULTS","kind":"controller_reset"})
 	entries.append({"text":"BUTTON GUIDE","kind":"controller_help"})
@@ -352,6 +352,7 @@ func _show_controller_help() -> void:
 	var stick_guide := "RIGHT STICK / D-PAD: CHOOSE ROUTE\nLEFT STICK: AIM / AUTO FIRE" if pad_input.swap_sticks else "LEFT STICK / D-PAD: CHOOSE ROUTE\nRIGHT STICK: AIM / AUTO FIRE"
 	if pad_input.free_movement:stick_guide=stick_guide.replace("CHOOSE ROUTE","MOVE / STRAFE")
 	var guide := "%s\n%s\n%s\nRT: MANUAL FIRE (AUTO FIRE ALSO ON)   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
+	if pad_input.free_movement:guide=guide.replace("LT: 180°","LT: HOLD TO LOCK / CHARGE TO GREEN")
 	_show("controller_help",{"guide":guide})
 
 func _controller_mode(active: bool) -> void:

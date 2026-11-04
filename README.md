@@ -2,13 +2,17 @@
 
 A dark sci-fi arena FPS for Android with free movement, portrait/landscape play, controller support, soul harvesting, and team deathmatches.
 
-**[Download APK — v0.8.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.8.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download APK — v0.9.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.9.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FPS cap**, automatic portrait/landscape rotation. Actual phone performance and Wi-Fi behavior still need device testing.
 
 ![Landscape controller HUD](docs/landscape.png)
 
 ![Portrait gameplay HUD](docs/preview.png)
+
+![Lock-on and active reload](docs/lock-on.png)
+
+![Arched gatehouse room](docs/arched-room.png)
 
 ## Install and update
 
@@ -29,19 +33,21 @@ Round standings prioritize remaining team lives, then frags, then collected esse
 
 - Rotate the phone at any point. The game reflows between portrait and landscape without restarting the match. Both landscape directions are supported, with screen-edge safe-area margins and an orientation-aware field of view. In Options, SCREEN cycles Auto → Portrait → Landscape. Auto follows the phone's rotation setting; the Portrait/Landscape choices lock that view and still allow either direction.
 - **Free movement:** the left touch joystick or controller left stick moves forward/backward and strafes. Release it to stop. Drag the open play area or use the right stick to look freely through 360°. Auto-fire remains enabled over valid targets; controller RT adds manual fire.
-- Jump/double-jump with the circular jumping-person button. The circular U-turn button below it turns 180°. Harvest sits beside jump. Old junction arrows are removed. Players, rival bots and minions use real movement and collisions; bots navigate the same ramps and optional jump links.
-- Each biome has a central rotunda, raised ring, side chambers, upper balconies and optional jump islands. Ramps connect the normal routes. Low railings stop ordinary walking but can be jumped over. Falling into the void consumes a life and respawns the player.
-- Before the match, a six-second shared RNG reveal picks time of day and biome-appropriate weather. Dawn/day/dusk/night affect sky, lighting and visibility; rain, snow, fog, ash or dust appear where appropriate. The full collection timer starts after the reveal and navigation preparation.
-- **An empty magazine waits for a tap anywhere to start reloading.** The crosshair ring shows reload progress. A second tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. Touch play has no separate reload button. RB/X on a controller or R on a keyboard explicitly reloads a partly used magazine too, preserving unspent rounds. The weapon drops below the screen during reloading with original mechanical foley, then rises back into view. An active reload brings it up quickly with a short ready delay.
+- Jump/double-jump with the circular jumping-person button. Harvest sits beside jump. A circular hold-to-lock button sits above the movement stick; instant 180° turns are removed. Old junction arrows are removed. Players, rival bots and minions use real movement and collisions; bots navigate the same ramps and optional jump links.
+- Each biome has a central rotunda, raised ring, side chambers, upper balconies, optional jump islands and two roofed gatehouses with stone walls and arched entrances. Ramps connect the normal routes. Low railings stop ordinary walking but can be jumped over. Falling into the void consumes a life and respawns the player.
+- Before the match, a six-second shared RNG reveal picks time of day and biome-appropriate weather. Dark sunset, storm front, overcast dusk and night affect sky, lighting and visibility; sunny daytime and clear-day rolls are excluded. Rain, snow, fog, ash or dust appear where appropriate. The full collection timer starts after the reveal and navigation preparation.
+- **The final shot immediately starts reloading when reserve ammo is available.** The inner crosshair ring shows reload progress. A tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. Touch play has no separate reload button. RB/X on a controller or R on a keyboard also explicitly reloads a partly used magazine too, preserving unspent rounds. The weapon drops below the screen during reloading with original mechanical foley, then rises back into view. An active reload brings it up quickly with a short ready delay.
+- **Optional lock-on:** hold LT (Y is a remappable alternate), the touch lock button, or right mouse. The game acquires a visible enemy/minion within a 22° cone and 32 m, displays amber corner brackets, and tracks it while an outer ring charges for 0.7 seconds. During this mode, both manual and automatic shooting wait until the ring is green. Outside this mode, normal shooting still works. Occlusion, death, range loss, release or a large aim break clears the charge. The host validates and replicates target/charge. Allied players and protected collection-phase players cannot be locked.
+- Enemy bots turn gradually (90°/second for rival players, 65°/second for minions) and must face their target to fire; they cannot instantly shoot backward.
 - Lives sit at the upper left; souls and frags at the upper right. The phase timer sits at the top center. Health and regenerating shield hug the bottom left; ammo and reserve hug the bottom right. No dark HUD panels.
 - Green pickups restore health; amber pickups supply ammunition. Shield recovers at 20/second after four seconds without damage, modified by gifts.
 - Pause freezes offline matches. **LAN matches continue behind the pause menu.** Keep the host app in the foreground.
 
-Desktop testing: WASD/arrows move and strafe, mouse aims, left mouse button fires manually, Space jumps/double-jumps, Q turns 180°, E harvests, R reloads/attempts active reload, Esc pauses.
+Desktop testing: WASD/arrows move and strafe, mouse aims, left mouse button fires manually, Space jumps/double-jumps, right mouse holds lock, E harvests, R reloads/attempts active reload, Esc pauses.
 
 ## Backbone and other Android controllers
 
-The game accepts Godot's standard Android/SDL gamepad mapping over **USB-C or Bluetooth**, covering Backbone Android, Xbox-style, PlayStation-style, and other mapped Android controllers. It detects connection/disconnection and switches between touch and controller input. The previous default layout migrates automatically to RB reload, B harvest, and Y reverse; unrelated custom jump/pause bindings are retained when possible.
+The game accepts Godot's standard Android/SDL gamepad mapping over **USB-C or Bluetooth**, covering Backbone Android, Xbox-style, PlayStation-style, and other mapped Android controllers. It detects connection/disconnection and switches between touch and controller input. The previous layout migrates to RB reload, B harvest and Y hold-to-lock; unrelated custom bindings are retained where possible.
 
 These paths have been tested with synthetic standard gamepad events; **physical Backbone and other hardware still need device testing**. Vendor firmware, unusual HID mappings, and OS-reserved buttons can vary. A controller companion app is not required by the game.
 
@@ -50,7 +56,7 @@ These paths have been tested with synthetic standard gamepad events; **physical 
 | Left stick / D-pad | Move forward/backward and strafe |
 | Right stick | Aim; shooting remains automatic over a valid enemy |
 | A / south face button, or LB | Jump / double jump |
-| Y / north face button, or LT | Reverse 180° |
+| LT, held / Y held | Optional target lock; wait for green before firing in this mode |
 | RB (X also works) | Reload / active reload; partial magazines can be reloaded |
 | B / east face button | Harvest souls |
 | RT, held | Manual firing at the crosshair; auto-fire stays enabled |
@@ -67,7 +73,7 @@ Touch controls hide when a controller is used and return on touch. The controlle
 
 The Godot splash image is disabled. Android may still briefly show the app icon during native startup. The title screen runs a real AI-controlled gameplay demonstration behind the logo. Tap to enter the main menu: **Single Player Campaign**, **Multiplayer**, **Options**, **Quit Game**, and art credits.
 
-The initial campaign is a sequence of bot matches across five biome maps, unlocked by winning: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast. It is a match-based campaign foundation, without story cinematics. Options persist aiming sensitivity from 50%–300% in 10% steps, with a 180% reset, invert aim, separate effects/music/ambience volumes, camera motion, and the screen-orientation preference. Everyone starts with a five-shell, single-barrel pump shotgun. Other shop weapons currently share the older sidearm model with size adjustments. Anatomical first-person arms and an open harvesting hand replace the old glove shapes. Shotgun pellets and enemy bolts travel visibly; collision, rather than an immediate hitscan, determines damage.
+The initial campaign is a sequence of bot matches across five biome maps, unlocked by winning: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast. It is a match-based campaign foundation, without story cinematics. Options persist aiming sensitivity from 50%–300% in 10% steps, with a 180% reset, invert aim, separate effects/music/ambience volumes, camera motion, and the screen-orientation preference. Everyone starts with a five-shell, single-barrel pump shotgun. Other shop weapons currently share the older sidearm model with size adjustments. Anatomical first-person arms and an open harvesting hand use original PBR skin, steel, fabric and walnut textures. Portrait uses a smaller, lower weapon position with additional depth to keep the view clear. Shotgun pellets and enemy bolts travel visibly; collision, rather than an immediate hitscan, determines damage.
 
 ## Players, minions and audio
 
@@ -119,10 +125,11 @@ See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated sce
 godot --headless --path . --script tests/free_arena_test.gd
 godot --headless --path . --script tests/free_biomes.gd
 godot --headless --path . --script tests/free_controls.gd
+godot --headless --path . --script tests/lock_combat_test.gd
 godot --headless --path . --script tests/match_rules_test.gd
 godot --headless --path . --script tests/ui_navigation.gd
 ```
 
-For the two-process LAN integration test, start `tests/lan_free_peer.gd -- host`, then `tests/lan_free_peer.gd -- client` in separate Godot processes on the same machine (UDP 27819). Both must report PASS. The test uses a landscape host, portrait guest, real ENet transport, controller movement/manual shots, synchronized conditions, shopping, shared rolls, hunting, and disconnected-player bot takeover. All LAN players must use v0.8.0 (protocol 8). Older rail tests explicitly use `tests/legacy_fixture.gd` to cover the reusable earlier systems.
+For the two-process LAN integration test, start `tests/lan_free_peer.gd -- host`, then `tests/lan_free_peer.gd -- client` in separate Godot processes on the same machine (UDP 27819). Both must report PASS. The test uses a landscape host, portrait guest, real ENet transport, controller movement/manual shots, synchronized conditions, shopping, shared rolls, hunting, and disconnected-player bot takeover. All LAN players must use v0.9.0 (protocol 9). A second two-process test, `tests/lan_lock_peer.gd -- host` / `-- client` (UDP 27829), verifies optional LT acquisition, host-enforced charging, shooting and release between landscape/portrait peers. Older rail tests explicitly use `tests/legacy_fixture.gd` to cover the reusable earlier systems.
 
 Every update gets a numbered GitHub Release with a new APK. Increase `version/code` and `version/name`, keep the original signing key outside the repository, and verify the APK before upload. Current builds use development signing; store distribution requires release signing.

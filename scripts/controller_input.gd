@@ -21,6 +21,9 @@ var route_latch := ""
 var nav_direction := Vector2.ZERO
 var repeat_left := 0.0
 var trigger_latches: Dictionary = {}
+var locking := false
+var lock_heartbeat := 0.0
+const FREE_DEFAULTS := {"jump":JOY_BUTTON_A,"lock":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"suction":JOY_BUTTON_B,"pause":JOY_BUTTON_START}
 var firing := false
 var fire_heartbeat := 0.0
 var free_movement := true
@@ -44,6 +47,7 @@ func _connection(id: int,connected: bool) -> void:
 
 func clear_axes() -> void:
 	stop_firing()
+	stop_locking()
 	stop_moving()
 	axes.clear()
 	held.clear()
@@ -55,7 +59,7 @@ func clear_axes() -> void:
 func set_active(value: bool) -> void:
 	if value==active:return
 	active=value
-	if not active:stop_firing();stop_moving()
+	if not active:stop_firing();stop_locking();stop_moving()
 	mode_changed.emit(active)
 
 func device_name() -> String:
@@ -70,6 +74,7 @@ func button_name(button: int) -> String:
 	return {JOY_BUTTON_BACK:"VIEW",JOY_BUTTON_GUIDE:"HOME",JOY_BUTTON_START:"START",JOY_BUTTON_LEFT_STICK:"L3",JOY_BUTTON_RIGHT_STICK:"R3",JOY_BUTTON_LEFT_SHOULDER:"LB",JOY_BUTTON_RIGHT_SHOULDER:"RB"}.get(button,"BUTTON %d" % button)
 
 func prompt() -> String:
+	if free_movement:return "LT LOCK   RT FIRE   %s JUMP   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
 	return "RT FIRE   %s JUMP   %s 180°   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reverse"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
 
 func shoulder_prompt() -> String:
@@ -120,7 +125,9 @@ func handle(event: InputEvent) -> void:
 			elif button==JOY_BUTTON_BACK:command.emit("controls",null)
 			return
 		for action in bindings:
-			if bindings[action]==button:command.emit(action,null);return
+			if bindings[action]==button:
+				if action!="lock":command.emit(action,null)
+				return
 		if button==JOY_BUTTON_RIGHT_SHOULDER or button==JOY_BUTTON_X:command.emit("reload",null)
 		elif button==JOY_BUTTON_LEFT_SHOULDER:command.emit("jump",null)
 		elif button==JOY_BUTTON_BACK:command.emit("controls",null)
@@ -186,12 +193,18 @@ func step(delta: float) -> void:
 			if fire_heartbeat<=0:
 				command.emit("fire",true)
 				fire_heartbeat=.18
-		for axis in [JOY_AXIS_TRIGGER_LEFT]:
-			var value := float(axes.get(axis,0))
-			if value<0.3:trigger_latches[axis]=false
-			elif value>0.65 and not trigger_latches.get(axis,false):
-				trigger_latches[axis]=true
-				command.emit("reverse",null)
+		if free_movement:
+			var lt:=float(axes.get(JOY_AXIS_TRIGGER_LEFT,0))
+			var requested: bool=lt>(.3 if locking else .65) or held.has(bindings.get("lock",JOY_BUTTON_Y))
+			if not requested:stop_locking()
+			else:
+				locking=true;lock_heartbeat-=delta
+				if lock_heartbeat<=0:command.emit("lock",true);lock_heartbeat=.18
+		else:
+			var lt:=float(axes.get(JOY_AXIS_TRIGGER_LEFT,0))
+			if lt<.3:trigger_latches[JOY_AXIS_TRIGGER_LEFT]=false
+			elif lt>.65 and not trigger_latches.get(JOY_AXIS_TRIGGER_LEFT,false):
+				trigger_latches[JOY_AXIS_TRIGGER_LEFT]=true;command.emit("reverse",null)
 	else:
 		var direction := Vector2.ZERO
 		for button in [JOY_BUTTON_DPAD_LEFT,JOY_BUTTON_DPAD_RIGHT,JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_DOWN]:
@@ -203,3 +216,8 @@ func step(delta: float) -> void:
 		else:
 			repeat_left-=delta
 			if repeat_left<=0:repeat_left=0.15;command.emit("nav",direction)
+
+func stop_locking() -> void:
+	if locking:locking=false;command.emit("lock",false)
+	lock_heartbeat=0
+func default_bindings() -> Dictionary:return FREE_DEFAULTS.duplicate() if free_movement else DEFAULTS.duplicate()

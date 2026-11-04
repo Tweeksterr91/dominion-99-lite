@@ -1,7 +1,25 @@
 """Original single-barrel pump shotgun and anatomical first-person arms. MIT."""
 from pathlib import Path
 exec((Path(__file__).parent/'build_sidearm.py').read_text().split("cube('Receiver'")[0])
-skin=material('Exposed skin',(.42,.245,.15),0,.6);nail=material('Fingernails',(.57,.36,.26),0,.5);wood=material('Pump polymer',(.095,.075,.055),.1,.75)
+skin=material('Exposed skin',(.42,.245,.15),0,.6);nail=material('Fingernails',(.57,.36,.26),0,.5);wood=material('Oiled walnut',(.095,.075,.055),0,.5)
+texture_root=Path(__file__).resolve().parents[1]/'assets/textures/viewmodel'
+def textured(mat,prefix,metallic=0):
+ nodes=mat.node_tree.nodes;links=mat.node_tree.links;bsdf=nodes.get('Principled BSDF')
+ bsdf.inputs['Metallic'].default_value=metallic
+ for role,socket in [('color','Base Color'),('rough','Roughness')]:
+  tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(texture_root/(prefix+'_'+role+'.png')),check_existing=True)
+  if role!='color':tex.image.colorspace_settings.name='Non-Color'
+  links.new(tex.outputs['Color'],bsdf.inputs[socket])
+ tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(texture_root/(prefix+'_normal.png')),check_existing=True);tex.image.colorspace_settings.name='Non-Color'
+ normal=nodes.new('ShaderNodeNormalMap');normal.inputs['Strength'].default_value=.65
+ links.new(tex.outputs['Color'],normal.inputs['Color']);links.new(normal.outputs['Normal'],bsdf.inputs['Normal'])
+textured(skin,'skin');textured(steel,'steel',.88);textured(black,'steel',.75);textured(edge,'steel',.9);textured(fabric,'cloth');textured(wood,'walnut')
+# Smooth silhouette at close first-person distances.
+base_ellipsoid=ellipsoid
+def ellipsoid(name,p,size,mat):
+ o=base_ellipsoid(name,p,size,mat)
+ sub=o.modifiers.new('Anatomical smoothing','SUBSURF');sub.levels=1;bpy.context.view_layer.objects.active=o;bpy.ops.object.modifier_apply(modifier=sub.name)
+ return o
 def group(name):
  o=bpy.data.objects.new(name,None);bpy.context.collection.objects.link(o);return o
 def parent(o,g):
@@ -25,7 +43,14 @@ parent(barrel('Magazine tube (closed)',(.19,-.218,-.86),.018,.39,black),weapon)
 parent(barrel('Closed magazine cap',(.19,-.218,-1.06),.021,.015,edge),weapon)
 parent(cube('Stock',(.22,-.25,-.30),(.09,.12,.30),wood,.025),weapon)
 parent(cube('Pistol grip',(.20,-.29,-.45),(.065,.15,.10),wood,.022),weapon)
-parent(cube('Rear sight',(.19,-.12,-.47),(.045,.022,.035),black,.004),weapon)
+# Rounded trigger guard, receiver fasteners and a brass shell in the carrier.
+for z in [-.47,-.58,-.65]:
+ o=barrel('Receiver fastener',(.237,-.19,z),.006,.004,edge);o.rotation_euler=(0,math.pi/2,0);parent(o,weapon)
+for y in [-.31,-.34]:parent(cube('Trigger guard',(.19,y,-.52),(.054,.009,.10),black,.004),weapon)
+parent(cube('Trigger guard front',(.19,-.325,-.57),(.054,.04,.009),black,.004),weapon)
+parent(cube('Trigger blade',(.19,-.311,-.51),(.010,.033,.014),edge,.004),weapon)
+parent(cube('Receiver raised rail',(.19,-.132,-.59),(.042,.012,.20),black,.004),weapon)
+parent(cube('Rear sight' ,(.19,-.12,-.47),(.045,.022,.035),black,.004),weapon)
 parent(cube('Front bead',(.19,-.125,-1.13),(.012,.015,.014),edge,.004),weapon)
 parent(cube('Pump fore-end',(.19,-.23,-.85),(.095,.09,.24),wood,.026),pump)
 for z in [-.76,-.80,-.84,-.88,-.92]:parent(cube('Pump grip rib',(.19,-.23,z),(.102,.085,.014),rubber,.006),pump)
@@ -45,7 +70,12 @@ for i in range(4):
  z=-.765-i*.027
  limb('Left proximal finger',(.15,-.292,z),(.222,-.275,z),.010,skin,support)
  limb('Left fingertip',(.222,-.275,z),(.234,-.245,z),.009,skin,support)
-parent(ellipsoid('Left thumb',(.139,-.218,-.83),(.013,.020,.036),skin),support)
+for i in range(4):
+ z=-.765-i*.027
+ parent(ellipsoid('Left knuckle',(.227,-.27,z),(.012,.014,.012),skin),support)
+ parent(ellipsoid('Left nail',(.236,-.244,z),(.003,.010,.006),nail),support)
+parent(ellipsoid('Thenar muscle',(.17,-.27,-.49),(.025,.034,.035),skin),grip)
+parent(ellipsoid('Left thumb' ,(.139,-.218,-.83),(.013,.020,.036),skin),support)
 for g in [weapon,pump,support,grip]:merge(g)
 path=Path(__file__).resolve().parents[1]/'assets/models/pump_shotgun.glb'
 bpy.ops.export_scene.gltf(filepath=str(path),export_format='GLB',export_animations=False)

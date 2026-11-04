@@ -1,3 +1,13 @@
+# Lock & Load visual pass (v0.9.0)
+
+Rotated ramps and railings now scale in their local axes, matching the actual collision shapes. Two roofed stone gatehouses add enclosed rooms and arched entrances to every biome. Existing circular arenas and elevated paths remain connected. Environment rolls are restricted to dark sunset, storm front, overcast dusk and night.
+
+Original PBR textures add skin variation/pores, metal wear, cloth weave and walnut grain to the first-person models. Hand surfaces are smoother and the shotgun has additional receiver/trigger details. Portrait places the weapon lower, smaller and farther forward to reduce screen coverage. The materials are synthesized original maps; further realism still needs dedicated art work.
+
+An amber target bracket identifies the locked enemy. The outer acquisition ring turns green on completion and sits just outside the separate active-reload ring. Touch gets a hold-to-lock circle above the movement joystick. Instant-turn controls are removed.
+
+Earlier iteration notes follow.
+
 # Dominion '99 (Lite): free arena direction (v0.8.0)
 
 The active game is a free-moving arena FPS with portrait and landscape layouts. Its five biome arenas use circular rotundas, a raised ring, side chambers, upper balconies and ramps, with optional jump islands and jumpable low railings. Bots and minions use navigation over real collision geometry.

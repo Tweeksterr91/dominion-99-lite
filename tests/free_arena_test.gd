@@ -121,7 +121,7 @@ func verify() -> void:
   for i in range(5):await process_frame
   g.hud_ui._relayout();g._show("play")
   var bounds:=Rect2(Vector2.ZERO,root.get_visible_rect().size)
-  for control in [g.hud_ui.stick,g.hud_ui.jump,g.hud_ui.essence,g.hud_ui.reverse]:check(bounds.encloses(control.get_global_rect()),"Free touch controls fit "+str(dimensions))
+  for control in [g.hud_ui.stick,g.hud_ui.jump,g.hud_ui.essence,g.hud_ui.lock_button]:check(bounds.encloses(control.get_global_rect()),"Free touch controls fit "+str(dimensions))
   check(not g.hud_ui.routes["ahead"].visible and not g.hud_ui.down.visible,"Rail arrows and down-route button are removed")
   check(g.hud_ui.reticle.get_global_rect().get_center().distance_to(bounds.get_center())<1,"Aim stays centered")
  print("FAIL" if failed else "PASS: environment roll, 70% mix, free movement/strafe/stop/look, connected navigation and ramps, jumpable railings/falls, shotgun/arms/pump, real projectile damage/protection, free bots, responsive touch")

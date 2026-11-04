@@ -14,7 +14,7 @@ func verify() -> void:
   check(g.course.nav_ready,"Biome navigation ready")
   var map=g.get_world_3d().navigation_map
   var radius: float=g.course.ring_radius
-  for target in [Vector3(0,4,radius),Vector3(radius+12,8,-8)]:
+  for target in [Vector3(0,4,radius),Vector3(radius+12,8,-8),Vector3(0,4,radius+8),Vector3(0,4,-radius-8)]:
    var path=NavigationServer3D.map_get_path(map,Vector3.ZERO,target,true)
    check(not path.is_empty() and path[path.size()-1].distance_to(target)<1,"Every biome has connected raised routes")
   check(g.course.ramps.size()>=8 and g.course.jump_links.size()==4,"Every biome has ramps and optional jump islands")

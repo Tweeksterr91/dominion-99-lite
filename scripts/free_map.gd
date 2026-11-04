@@ -53,6 +53,9 @@ func build(parent: Node3D,theme: int) -> Node3D:
 			var angle:=k*TAU/6
 			if absf(sin(angle))<.3:continue
 			_cylinder(geometry,center+Vector3(cos(angle)*5,2.4,sin(angle)*5),.30,4.8,1,true)
+	# Enclosed gatehouses at the north/south approaches, with real arched doors.
+	for side in [-1.0,1.0]:
+		_gatehouse(geometry,Vector3(0,4,side*(ring_radius+8)),side)
 	# Optional jump islands beyond the ring; the low railings can be jumped over.
 	for i in [1,3,5,7]:
 		var d:=Vector3(cos(i*TAU/8),0,sin(i*TAU/8))
@@ -113,7 +116,7 @@ func _solid(parent: Node3D,pos: Vector3,shape: Shape3D,basis := Basis.IDENTITY) 
 	var body:=StaticBody3D.new();body.position=pos;body.basis=basis;body.collision_layer=1;parent.add_child(body)
 	var col:=CollisionShape3D.new();col.shape=shape;body.add_child(col)
 func _box(parent: Node3D,pos: Vector3,size: Vector3,mat: int,solid: bool,basis := Basis.IDENTITY) -> void:
-	_batch(box,Transform3D(basis.scaled(size),pos),mat)
+	_batch(box,Transform3D(basis*Basis.from_scale(size),pos),mat)
 	if solid:
 		var shape:=BoxShape3D.new();shape.size=size;_solid(parent,pos,shape,basis)
 func _cylinder(parent: Node3D,pos: Vector3,radius: float,height: float,mat: int,solid: bool) -> void:
@@ -128,10 +131,10 @@ func _railing(parent: Node3D,center: Vector3,radius: float,openings: bool) -> vo
 	for i in range(48):
 		var a:=i*TAU/48;var b: float=(i+1)*TAU/48
 		if openings and absf(sin(a+b))<minf(.85,4.0/radius):continue
-		var p:=center+Vector3(cos(a)*radius,.64,sin(a)*radius)
-		var q:=center+Vector3(cos(b)*radius,.64,sin(b)*radius)
-		_box(parent,(p+q)*.5,Vector3(.075,.075,p.distance_to(q)+.04),3,true,Basis.looking_at(-(q-p).normalized(),Vector3.UP))
-		if i%3==0:_box(parent,p-Vector3.UP*.32,Vector3(.08,.64,.08),3,true)
+		var p:=center+Vector3(cos(a)*radius,.76,sin(a)*radius)
+		var q:=center+Vector3(cos(b)*radius,.76,sin(b)*radius)
+		_box(parent,(p+q)*.5,Vector3(.12,.12,p.distance_to(q)+.04),3,true,Basis.looking_at(-(q-p).normalized(),Vector3.UP))
+		if i%3==0:_box(parent,p-Vector3.UP*.38,Vector3(.12,.76,.12),3,true)
 func _ring(parent: Node3D,center: Vector3,inner: float,outer: float,mat: int,solid: bool) -> void:
 	var st:=SurfaceTool.new();st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in range(96):
@@ -149,3 +152,31 @@ func _ring(parent: Node3D,center: Vector3,inner: float,outer: float,mat: int,sol
 			var radius: float=(inner+outer)*.5
 			var shape:=BoxShape3D.new();shape.size=Vector3(outer-inner,.4,2*outer*sin(PI/96)+.32)
 			_solid(parent,center+Vector3(cos(angle)*radius,-.2,sin(angle)*radius),shape,Basis(Vector3.UP,-angle))
+
+func _gatehouse(parent: Node3D,center: Vector3,_side: float) -> void:
+	# Floor joins the raised ring. Wall openings and arch colliders match the visible mesh.
+	_box(parent,center-Vector3.UP*.2,Vector3(12,.4,10.6),1,true)
+	for x in [-6.0,6.0]:_box(parent,center+Vector3(x,2.65,0),Vector3(.65,5.3,10.6),1,true)
+	for z in [-5.0,5.0]:
+		for x in [-4.0,4.0]:_box(parent,center+Vector3(x,2.65,z),Vector3(4,5.3,.7),1,true)
+		_arch(parent,center+Vector3(0,0,z),2.0,2.1,5.3,.7)
+	_box(parent,center+Vector3(0,5.4,0),Vector3(12.6,.35,11.0),1,true)
+	for x in [-4.8,4.8]:
+		for z in [-3.8,3.8]:
+			_cylinder(parent,center+Vector3(x,2.35,z),.28,4.7,1,true)
+			_box(parent,center+Vector3(x,2.9,z),Vector3(.12,.5,.25),4,false)
+	# Low stone furnishings leave the center lane open.
+	for x in [-3.8,3.8]:_box(parent,center+Vector3(x,.55,0),Vector3(1.2,1.1,2.4),1,true)
+
+func _arch(parent: Node3D,origin: Vector3,radius: float,spring: float,height: float,depth: float) -> void:
+	# Vertical strips follow a semicircular intrados; no invisible box across the doorway.
+	for i in range(24):
+		var x0: float=-radius+2*radius*i/24.0
+		var x1: float=-radius+2*radius*(i+1)/24.0
+		var low: float=spring+sqrt(maxf(0,radius*radius-pow((x0+x1)*.5,2)))
+		_box(parent,origin+Vector3((x0+x1)*.5,(low+height)*.5,0),Vector3(x1-x0+.008,height-low,depth),1,true)
+	# Dark stone voussoirs make the curved doorway easy to read.
+	for i in range(16):
+		var angle: float=(i+.5)*PI/16
+		var pos:=origin+Vector3(cos(angle)*(radius+.13),spring+sin(angle)*(radius+.13),0)
+		_box(parent,pos,Vector3(.42,.26,depth+.16),2,false,Basis(Vector3.FORWARD,-angle))

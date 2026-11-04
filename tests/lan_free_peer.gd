@@ -66,7 +66,10 @@ func _process(_delta: float) -> bool:
   if elapsed>7.9 and not stopped:axis(JOY_AXIS_LEFT_X,0);stopped=true
   if elapsed>8.1 and not released:axis(JOY_AXIS_TRIGGER_RIGHT,0);released=true
   if elapsed>8.3 and g.screen=="play" and not turned:
-   var e:=InputEventJoypadButton.new();e.device=99;e.button_index=JOY_BUTTON_Y;e.pressed=true;g._input(e);e.pressed=false;g._input(e);turned=true
+   var yaw: float=g.rails[g.local_id].aim_yaw
+   axis(JOY_AXIS_TRIGGER_LEFT,1);g.pad_input.step(.04)
+   assert(absf(angle_difference(yaw,g.rails[g.local_id].aim_yaw))<.01,"LT no longer reverses direction")
+   axis(JOY_AXIS_TRIGGER_LEFT,0);g.pad_input.step(.04);turned=true
   if g.rules.phase==1 and not bought:g._request_action("buy","needle");g._request_action("ready");bought=true
   if g.rules.phase==3 and elapsed>16:
    assert(packets>150 and bullets_seen and gold_seen,"Client receives continuous state, projectiles, and gold")

@@ -1,4 +1,6 @@
 extends Control
+var lock_active := false
+var lock_progress := 0.0
 var locked := false
 var essence := false
 var gold := false
@@ -26,3 +28,11 @@ func _draw() -> void:
 			draw_circle(point,3.5,Color("fff3d8"))
 		if success > 0:
 			draw_arc(center,radius,0,TAU,80,Color(0.9,0.75,0.35,success),3,true)
+
+	# Acquisition ring hugs the active-reload ring without obscuring its timing window.
+	if lock_active:
+		var radius:=41.0
+		var tint:=Color("79e7a2") if lock_progress>=1.0 else Color("edb45d")
+		draw_arc(center,radius,0,TAU,96,Color(0,0,0,.6),5,true)
+		draw_arc(center,radius,0,TAU,96,Color(tint,.25),1.5,true)
+		if lock_progress>0:draw_arc(center,radius,-PI/2,-PI/2+lock_progress*TAU,96,tint,3,true)
