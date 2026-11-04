@@ -36,10 +36,8 @@ var start_button: Button
 var fire_button: Button
 var reload_button: Button
 var pause_button: Button
-var quality_button: Button
 var pad: Panel
 var knob: Panel
-var low_power := false
 var flash: MeshInstance3D
 var flash_left := 0.0
 var shot_sound: AudioStreamPlayer
@@ -50,7 +48,7 @@ func _ready() -> void:
 	_make_player()
 	_make_audio()
 	_make_ui()
-	_show_menu("DOMINION '99", "LITE / OFFLINE ARENA\n\nClear 3 waves. Collect green health and amber ammo.\nLeft thumb: move • Right thumb: aim • FIRE: shoot\nDesktop: WASD / mouse / click / R / Esc", "DEPLOY")
+	_show_menu("DOMINION '99", "LITE / OFFLINE ARENA\n\nClear 3 waves.\nGreen pickups: health\nAmber pickups: ammo\n\nLeft thumb: move\nRight thumb: aim\nHold FIRE to shoot. Tap RELOAD.", "DEPLOY")
 
 func _material(color: Color, glow := false) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -123,6 +121,8 @@ func _make_player() -> void:
 	camera = Camera3D.new()
 	camera.position.y = 1.55
 	camera.fov = 78
+	# Preserve horizontal awareness and keep the pistol visible in portrait.
+	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.far = 65
 	player.add_child(camera)
 	gun = Node3D.new()
@@ -198,48 +198,58 @@ func _make_ui() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(root)
-	hud = _label(root, "", Vector2(24, 16), Vector2(730, 40), 23)
-	status = _label(root, "", Vector2(200, 75), Vector2(560, 50), 23)
+	hud = _label(root, "", Vector2(24, 34), Vector2(390, 82), 23)
+	status = _label(root, "", Vector2.ZERO, Vector2(492, 64), 21)
+	_place(status, Vector2(0.5, 0), Vector2(-246, 136), Vector2(492, 64))
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var crosshair := _label(root, "+", Vector2(465, 249), Vector2(30, 42), 30)
+	var crosshair := _label(root, "+", Vector2.ZERO, Vector2(30, 42), 30)
+	_place(crosshair, Vector2(0.5, 0.5), Vector2(-15, -21), Vector2(30, 42))
+	crosshair.name = "Crosshair"
 	crosshair.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pad = Panel.new()
-	pad.position = Vector2(45, 350)
-	pad.size = Vector2(145, 145)
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_theme_stylebox_override("panel", _style(Color(0.1, 0.2, 0.23, 0.35), 72))
 	root.add_child(pad)
+	_place(pad, Vector2(0, 1), Vector2(32, -232), Vector2(145, 145))
 	knob = Panel.new()
 	knob.size = Vector2(50, 50)
 	knob.position = Vector2(47.5, 47.5)
 	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	knob.add_theme_stylebox_override("panel", _style(Color(0.7, 0.85, 0.65, 0.45), 25))
 	pad.add_child(knob)
-	fire_button = _button(root, "FIRE", Vector2(810, 355), Vector2(120, 120), _shoot)
-	reload_button = _button(root, "RELOAD", Vector2(660, 440), Vector2(130, 65), _reload)
-	pause_button = _button(root, "II", Vector2(875, 18), Vector2(60, 48), _pause)
+	fire_button = _button(root, "FIRE", Vector2.ZERO, Vector2(132, 132), _shoot)
+	_place(fire_button, Vector2(1, 1), Vector2(-164, -260), Vector2(132, 132))
+	reload_button = _button(root, "RELOAD", Vector2.ZERO, Vector2(144, 64), _reload)
+	_place(reload_button, Vector2(1, 1), Vector2(-176, -106), Vector2(144, 64))
+	pause_button = _button(root, "II", Vector2.ZERO, Vector2(58, 56), _pause)
+	_place(pause_button, Vector2(1, 0), Vector2(-82, 34), Vector2(58, 56))
 	damage = ColorRect.new()
 	damage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	damage.color = Color(0.8, 0.1, 0.05, 0)
 	damage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(damage)
 	menu = Panel.new()
-	menu.position = Vector2(155, 75)
-	menu.size = Vector2(650, 390)
 	menu.add_theme_stylebox_override("panel", _style(Color("101d26"), 16))
 	root.add_child(menu)
-	menu_title = _label(menu, "", Vector2(30, 20), Vector2(590, 60), 40)
+	_place(menu, Vector2(0.5, 0.5), Vector2(-242, -260), Vector2(484, 520))
+	menu_title = _label(menu, "", Vector2(28, 24), Vector2(428, 60), 36)
 	menu_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_body = _label(menu, "", Vector2(30, 95), Vector2(590, 175), 20)
+	menu_body = _label(menu, "", Vector2(28, 104), Vector2(428, 290), 22)
+	menu_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	start_button = _button(menu, "DEPLOY", Vector2(35, 300), Vector2(280, 60), _start)
-	quality_button = _button(menu, "60 FPS TARGET", Vector2(335, 300), Vector2(280, 60), _quality)
+	start_button = _button(menu, "DEPLOY", Vector2(54, 426), Vector2(376, 64), _start)
 	_update_hud()
 
-func _quality() -> void:
-	low_power = not low_power
-	Engine.max_fps = 30 if low_power else 60
-	quality_button.text = "30 FPS / SAVE POWER" if low_power else "60 FPS TARGET"
+func _place(control: Control, anchor: Vector2, offset: Vector2, dimensions: Vector2) -> void:
+	control.anchor_left = anchor.x
+	control.anchor_right = anchor.x
+	control.anchor_top = anchor.y
+	control.anchor_bottom = anchor.y
+	control.offset_left = offset.x
+	control.offset_top = offset.y
+	control.offset_right = offset.x + dimensions.x
+	control.offset_bottom = offset.y + dimensions.y
 
 func _show_menu(title: String, body: String, action: String) -> void:
 	running = false
@@ -263,7 +273,7 @@ func _start() -> void:
 
 func _pause() -> void:
 	if running:
-		_show_menu("PAUSED", "DOMINION '99 (LITE)\n\nTake a breather. Your arena is waiting.\nUse 30 FPS to reduce power use and heat.", "RESUME")
+		_show_menu("PAUSED", "DOMINION '99 (LITE)\n\nTake a breather.\nYour arena is waiting.", "RESUME")
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED and running:
@@ -467,7 +477,7 @@ func _tick_pickups(delta: float) -> void:
 			item.queue_free()
 
 func _update_hud() -> void:
-	hud.text = "HP %03d     /     AMMO %02d : %02d     /     WAVE %d / %d" % [health, ammo, reserve, wave, LAST_WAVE]
+	hud.text = "HP %03d     WAVE %d / %d\nAMMO %02d / %02d" % [health, wave, LAST_WAVE, ammo, reserve]
 	if reload_left > 0:
 		status.text = "RELOADING..."
 	elif ammo == 0 and reserve == 0:

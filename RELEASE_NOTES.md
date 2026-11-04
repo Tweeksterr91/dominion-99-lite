@@ -1,25 +1,17 @@
-# Dominion '99 (Lite) — v0.1.0
+# Dominion '99 (Lite) — v0.1.1
 
-The first playable development build of Dominion '99 (Lite), a small offline Android FPS with a retro arena style.
+Portrait play with a fixed 60 FPS cap.
 
-## Play
+## Changes
 
-Download `dominion-99-lite.apk` from this release on your Android phone, open it from Downloads, and tap Install. Android may ask you to allow installation from the app opening the file. Launch the game and tap DEPLOY. Godot is not required to play.
+- Locked Android orientation to portrait.
+- Removed the 30/60 FPS toggle and its menu text; the game always uses a 60 FPS cap.
+- Rearranged the HUD, menus, movement pad, fire button, and reload button for upright play.
+- Anchored controls to the screen edges so taller phones use the full available height.
+- Preserved the horizontal camera field of view so enemies and the pistol remain visible in portrait.
 
-## Included
+## Install or update
 
-- One arena with cover and three enemy waves.
-- Touch movement and aiming, pistol shooting, and reloading.
-- Health and ammo pickups.
-- Pause, restart, and a choice of 30 or 60 FPS caps.
-- Offline single-player play.
+Download `dominion-99-lite.apk` from Assets on your phone, open it, and tap Install or Update. This APK uses the same package and signing key as v0.1.0, with a higher Android version code. There is no need to uninstall the earlier version.
 
-## Compatibility and status
-
-- Android 7.0 or newer, ARM64 devices.
-- Intended initial device: OnePlus 12R.
-- Early development APK; no on-device performance measurements yet.
-- Gameplay logic, APK signature, and APK alignment checks passed.
-- Simple enemy steering; no multiplayer or saved progression.
-
-Future updates will be separate numbered Releases with a new APK and notes describing the changes. Android version codes must increase, and APKs must use the same signing key to install over the existing game.
+Requires Android 7.0 or newer on ARM64. Godot is not required to play. This is a development build; 60 FPS is the configured cap, and actual performance has not yet been measured on a OnePlus 12R.
