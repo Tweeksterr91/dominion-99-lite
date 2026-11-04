@@ -1,17 +1,15 @@
-# v0.6.0 — Rotate & Play
+# v0.7.0 — Trigger & Reload
 
-- One APK supports automatic portrait and landscape rotation, including either landscape direction. Rotation preserves the current match, inventory, lives, and round timer. Options also offers Auto/Portrait/Landscape preference, so you can force landscape for a Backbone even when system auto-rotation is off.
-- Dedicated landscape HUD, menus, shop, shared-roll reveal, options and campaign layouts. Health/shield and ammo remain at the screen edges; aim stays centered. Camera projection adjusts to the aspect ratio; Android cutout margins protect the edge UI.
-- Standard Android USB-C/Bluetooth gamepad support, including the Backbone Android control scheme, through Godot's native controller mapping. Hot-plug support and automatic touch/controller HUD switching.
-- Right stick aims; left stick/D-pad chooses routes. A/RB jump, B/LT reverse, X/RT reload/active timing, Y/LB harvest, Start pauses, View opens the guide. Face-button labels adapt to recognized PlayStation/Nintendo names; firing stays automatic.
-- Controller-only menu navigation and shop use. LAN IP entry uses the phone's keyboard.
-- Controller Settings: independent aim sensitivity, radial deadzone, curved fine-aim response, stick swapping, saved primary button remapping, and reset. Holding a trigger does not retrigger active reload.
-- Controller disconnect pauses offline play and restores touch input. LAN matches continue with touch fallback.
+- **RT: manual fire**, while crosshair auto-fire remains enabled. Hold RT to shoot at the current aim, including misses. Manual and automatic firing share the same cooldown and magazine, preventing double-speed shots.
+- **RB: reload / active reload**. X remains an alternate reload input. Explicit controller/keyboard reloads also support partly used magazines without discarding remaining rounds. Touch taps continue to start reload only when empty.
+- **B: harvest souls**. **Y/LT: 180° turn**, **A/LB: jump/double jump**, Start pauses. Prompts and controller guide reflect the new layout. Existing default profiles migrate automatically; unrelated custom bindings are preserved where possible.
+- Classic weapon-lowering reload presentation: gun dips fully below the screen, original mechanical reload foley plays, then the gun rises back. Drop distance adapts to portrait and landscape projection. Active reload produces a quicker raise with a brief ready delay.
+- Original lowering/raising sounds follow effects volume and offline pause. No GoldenEye assets or sounds are used.
+- Manual shots can immediately deny blue essence; indestructible gold remains protected. Collection/hunting damage restrictions remain enforced by the host.
+- LAN manual-fire state uses heartbeat, release, pause cleanup and timeout protection against stuck firing.
 
-Install `dominion-99-lite.apk` as an update. Same application ID and signing certificate; versionCode 9. Existing settings/campaign progress are retained. The original five-round rules, treasure minions, gold souls, team outlines, audio, and fixed 60 FPS cap remain.
+Install `dominion-99-lite.apk` over the existing installation. Same application ID and signing certificate; versionCode 10. **All LAN participants must update to v0.7.0** (protocol 7).
 
-Validated with standard synthetic gamepad events: controller-only launch/navigation, analog aim and route choices, face/shoulder/trigger actions, active reload timing, remapping/persistence, stick swap, deadzone, hot-plug fallback, shop/guide navigation, phone/tablet landscape and portrait bounds, centered reticle and state-preserving rotation. Existing combat, rules/economy, animations, gold souls and real-collision traversal tests pass. Two-process 4v4 LAN passes with a landscape host, portrait guest, and controller-originated turn-around action.
+Validated: binding migration, held RT cadence/release/timeout, automatic-fire coexistence, actual raycast target damage, blue denial and gold immunity, RB tactical/active reload, ammunition conservation, down/hold/up motion, reload audio, B harvest/Y reverse; existing controller navigation, portrait/landscape rotation, physics traversal, economy and match tests. Two-process 4v4 LAN passes with a landscape host, portrait guest, and controller-originated manual shots. Physical Backbone, phone audio mix and frame rate still need hardware testing.
 
-A physical Backbone and other Android controllers are not attached to the build environment: hardware mappings, device audio/performance and rotation still need phone testing. This build uses the standard Android gamepad path and user-adjustable bindings, without a Backbone-specific SDK dependency.
-
-Original project code/art/audio: MIT; adapted Sinbad minions by Zi Ye: CC BY-SA 3.0; ambientCG/Poly Haven: CC0; Rajdhani: SIL OFL. Full notices: ASSET_CREDITS.md. Screenshots/video containing Sinbad are CC BY-SA 3.0.
+Original project content and reload foley: MIT; adapted Sinbad minions by Zi Ye: CC BY-SA 3.0; ambientCG/Poly Haven: CC0; Rajdhani: SIL OFL. Full notices: ASSET_CREDITS.md.

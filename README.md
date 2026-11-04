@@ -2,7 +2,7 @@
 
 A dark sci-fi auto-runner FPS with portrait, landscape, and gamepad support for Android: aim, choose routes, harvest essence, and hunt rivals.
 
-**[Download APK — v0.6.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.6.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download APK — v0.7.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.7.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FPS cap**, automatic portrait/landscape rotation. Actual phone performance and Wi-Fi behavior still need device testing.
 
@@ -28,9 +28,9 @@ Round standings prioritize remaining team lives, then frags, then collected esse
 ## Controls and HUD
 
 - Rotate the phone at any point. The game reflows between portrait and landscape without restarting the match. Both landscape directions are supported, with screen-edge safe-area margins and an orientation-aware field of view. In Options, SCREEN cycles Auto → Portrait → Landscape. Auto follows the phone's rotation setting; the Portrait/Landscape choices lock that view and still allow either direction.
-- The character runs automatically. Drag the open play area to aim (default sensitivity is now 180% of the earlier speed); a visible enemy under the crosshair is shot automatically. There is no running, strafing, or fire button.
+- The character runs automatically. Drag the open play area to aim (default sensitivity is now 180% of the earlier speed); a visible enemy under the crosshair is shot automatically. Touch play has no running, strafing, or fire button. Controller RT adds manual firing while auto-fire remains enabled.
 - Amber left/ahead/right arrows queue the next junction decision. The jumping-person icon sits below the ahead arrow. Tap once to jump, twice for a double jump; the circular U-turn button below jump reverses your run direction by 180° immediately. DOWN queues an available descending route. Route hints identify elevated paths. Missing a landing returns the runner to that hallway's start and costs 25 shield/health.
-- **An empty magazine waits for a tap anywhere to start reloading.** The crosshair ring shows reload progress. A second tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. There is no separate reload button.
+- **An empty magazine waits for a tap anywhere to start reloading.** The crosshair ring shows reload progress. A second tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. Touch play has no separate reload button. RB/X on a controller or R on a keyboard explicitly reloads a partly used magazine too, preserving unspent rounds. The weapon drops below the screen during reloading with original mechanical foley, then rises back into view. An active reload brings it up quickly with a short ready delay.
 - Lives sit at the upper left; souls and frags at the upper right. The phase timer sits at the top center. Health and regenerating shield hug the bottom left; ammo and reserve hug the bottom right. No dark HUD panels.
 - Green pickups restore health; amber pickups supply ammunition. Shield recovers at 20/second after four seconds without damage, modified by gifts.
 - Pause freezes offline matches. **LAN matches continue behind the pause menu.** Keep the host app in the foreground.
@@ -39,22 +39,25 @@ Desktop testing: mouse aim, A/D/W/S (or arrows) for routes, Space to jump/double
 
 ## Backbone and other Android controllers
 
-The game accepts Godot's standard Android/SDL gamepad mapping over **USB-C or Bluetooth**, covering Backbone Android, Xbox-style, PlayStation-style, and other mapped Android controllers. It detects connection/disconnection and switches between touch and controller input. These paths have been tested with synthetic standard gamepad events; **physical Backbone and other hardware still need device testing**. Vendor firmware, unusual HID mappings, and OS-reserved buttons can vary. A controller companion app is not required by the game.
+The game accepts Godot's standard Android/SDL gamepad mapping over **USB-C or Bluetooth**, covering Backbone Android, Xbox-style, PlayStation-style, and other mapped Android controllers. It detects connection/disconnection and switches between touch and controller input. The previous default layout migrates automatically to RB reload, B harvest, and Y reverse; unrelated custom jump/pause bindings are retained when possible.
+
+These paths have been tested with synthetic standard gamepad events; **physical Backbone and other hardware still need device testing**. Vendor firmware, unusual HID mappings, and OS-reserved buttons can vary. A controller companion app is not required by the game.
 
 | Controller input | Action |
 | --- | --- |
 | Left stick / D-pad | Queue left, ahead, right, or a descending route |
 | Right stick | Aim; shooting remains automatic over a valid enemy |
-| A / south face button, or RB | Jump / double jump |
-| B / east face button, or LT | Reverse 180° |
-| X / west face button, or RT | Start reload when empty; release and tap again in amber for active reload |
-| Y / north face button, or LB | Harvest souls |
+| A / south face button, or LB | Jump / double jump |
+| Y / north face button, or LT | Reverse 180° |
+| RB (X also works) | Reload / active reload; partial magazines can be reloaded |
+| B / east face button | Harvest souls |
+| RT, held | Manual firing at the crosshair; auto-fire stays enabled |
 | Start / Menu | Pause / resume |
 | View / Select | Controller guide |
 
 Menus use the left stick or D-pad, south face button to select, and east face button to go back. The shop and menus are navigable by controller; entering a LAN IP still uses the phone's keyboard. Recognized PlayStation and Nintendo names receive matching face-button labels; other pads use A/B/X/Y labels by position.
 
-**Options → Controller Settings** provides independent stick aim sensitivity (50–300%), a radial deadzone (10–35%, default 18%), stick swapping, saved primary button remapping, and restore defaults. Small stick inputs get a curved response for fine aiming. Shoulder shortcuts apply unless assigned another action. Trigger actions use press/release thresholds, so holding RT does not consume the reload bonus attempt.
+**Options → Controller Settings** provides independent stick aim sensitivity (50–300%), a radial deadzone (10–35%, default 18%), stick swapping, saved primary button remapping, and restore defaults. Small stick inputs get a curved response for fine aiming. Shoulder shortcuts apply unless assigned another action. RB requires a fresh press for the active-reload attempt; holding it does not consume the bonus. RT uses a trigger threshold and release hysteresis to fire continuously at the weapon's normal rate. Manual and automatic shots share one cooldown, so they cannot double the firing rate.
 
 Touch controls hide when a controller is used and return on touch. The controller HUD retains health, shield, ammo, timer, crosshair, route hints, and button prompts. Disconnecting pauses offline play; LAN stays live and offers touch fallback. Reconnect and press a button or move a stick to resume controller input. Orientation and controller changes do not reset lives, equipment, or round progress.
 
@@ -108,11 +111,12 @@ Import `project.godot` in the official Godot Editor for Android to edit on your 
 - `scripts/runner.gd`, `main.gd`: earlier prototype and reusable foundation.
 - `art_sources/`: editable Blender generation and conversion scripts.
 
-See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated scenery, Sentinel player/animations, sidearm, hand, icons, and synthesized audio use MIT. The adapted Sinbad creature and its textures use CC BY-SA 3.0; scans and lighting panorama are CC0. Rajdhani uses SIL OFL. Screenshots/video containing Sinbad are CC BY-SA 3.0 with attribution in ASSET_CREDITS.md.
+See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated scenery, Sentinel player/animations, sidearm, hand, icons, and synthesized audio (including reload foley) use MIT. The adapted Sinbad creature and its textures use CC BY-SA 3.0; scans and lighting panorama are CC0. Rajdhani uses SIL OFL. Screenshots/video containing Sinbad are CC BY-SA 3.0 with attribution in ASSET_CREDITS.md.
 
 ## Validation and releases
 
 ```sh
+godot --headless --path . --script tests/manual_fire_reload.gd
 godot --headless --path . --script tests/controller_orientation.gd
 godot --headless --path . --script tests/upgrade_features.gd
 godot --headless --path . --script tests/match_rules_test.gd
@@ -121,6 +125,6 @@ godot --headless --path . --script tests/ui_navigation.gd --quit-after 120
 godot --headless --path . --script tests/rail_traversal.gd
 ```
 
-For the two-process LAN integration test, start `tests/lan_game_peer.gd -- host`, then `tests/lan_game_peer.gd -- client` in separate Godot processes on the same machine (UDP 27809). Both must report PASS. The host uses landscape and the guest uses portrait; a simulated controller reversal travels through the actual action transport. The test advances timers to exercise all phases quickly. Legacy tests remain for the shared arena and older runner.
+For the two-process LAN integration test, start `tests/lan_game_peer.gd -- host`, then `tests/lan_game_peer.gd -- client` in separate Godot processes on the same machine (UDP 27809). Both must report PASS. The host uses landscape and the guest uses portrait; simulated controller reversal and manual-fire actions travel through the actual action transport. The test advances timers to exercise all phases quickly. Legacy tests remain for the shared arena and older runner.
 
 Every update gets a numbered GitHub Release with a new APK. Increase `version/code` and `version/name`, keep the original signing key outside the repository, and verify the APK before upload. Current builds use development signing; store distribution requires release signing.

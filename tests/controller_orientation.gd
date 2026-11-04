@@ -39,10 +39,10 @@ func verify() -> void:
  r.jumps=0;r.coyote=.12
  button(JOY_BUTTON_A)
  check(r.jumps==1,"South button jumps")
- button(JOY_BUTTON_RIGHT_SHOULDER)
+ button(JOY_BUTTON_LEFT_SHOULDER)
  check(r.jumps==2,"Shoulder supports jumping while aiming")
  var origin: int=r.origin
- button(JOY_BUTTON_B)
+ button(JOY_BUTTON_Y)
  check(r.target==origin,"East button reverses")
  var p: Dictionary=game.rules.players[0]
  p["ammo"]=0;p["reserve"]=24
@@ -51,19 +51,15 @@ func verify() -> void:
  game._tick_fighter_states(float(p["reload_total"])*.65)
  button(JOY_BUTTON_X)
  check(p["ammo"]==12 and p["reload_flash"]>0,"West button completes active reload")
- button(JOY_BUTTON_Y)
+ button(JOY_BUTTON_B)
  check(p["suction"]>0,"North button harvests")
  game.pad_input.clear_axes()
  p["ammo"]=0;p["reserve"]=24;p["reload"]=0
- axis(JOY_AXIS_TRIGGER_RIGHT,1)
- game.pad_input.step(.016)
- check(p["reload"]>0,"Right trigger starts reload")
- game.pad_input.step(.016)
- check(not p["reload_used"],"Held trigger never spends the active-reload attempt")
- axis(JOY_AXIS_TRIGGER_RIGHT,0);game.pad_input.step(.016)
+ button(JOY_BUTTON_RIGHT_SHOULDER)
+ check(p["reload"]>0,"RB starts reload")
  game._tick_fighter_states(float(p["reload_total"])*.65)
- axis(JOY_AXIS_TRIGGER_RIGHT,1);game.pad_input.step(.016)
- check(p["reload_flash"]>0,"Releasing and tapping trigger completes active reload")
+ button(JOY_BUTTON_RIGHT_SHOULDER)
+ check(p["reload_flash"]>0,"RB completes active reload")
  r.reset(game.player,game.course,22)
  button(JOY_BUTTON_DPAD_LEFT)
  check(r.queued==r.options(game.course)["left"],"D-pad chooses contextual left route")

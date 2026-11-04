@@ -63,6 +63,12 @@ var settings := ConfigFile.new()
 var combat_random := RandomNumberGenerator.new()
 var shop_signature := ""
 var quitting := false
+var reload_lowering := 0.0
+var reload_drop_distance := .65
+var seen_reload_cycle := 0
+var seen_reload_finish := 0
+var reload_lower_sound: AudioStreamPlayer
+var reload_raise_sound: AudioStreamPlayer
 
 func _ready() -> void:
 	Engine.max_fps = 60
@@ -72,6 +78,12 @@ func _ready() -> void:
 	collider.shape.height = 2.1
 	collider.position.y = 1.05
 	_make_audio()
+	reload_lower_sound = AudioStreamPlayer.new()
+	reload_lower_sound.stream = load("res://assets/audio/reload_lower.wav")
+	add_child(reload_lower_sound)
+	reload_raise_sound = AudioStreamPlayer.new()
+	reload_raise_sound.stream = load("res://assets/audio/reload_raise.wav")
+	add_child(reload_raise_sound)
 	soundscape = Soundscape.new()
 	add_child(soundscape)
 	shot_sound.volume_db = -12+linear_to_db(maxf(0.001,sound_volume))
@@ -138,12 +150,14 @@ func _save_settings() -> void:
 		settings.set_value("controller","deadzone",pad_input.deadzone)
 		settings.set_value("controller","swap_sticks",pad_input.swap_sticks)
 		settings.set_value("controller","bindings",pad_input.bindings)
+		settings.set_value("controller","binding_layout",2)
 	settings.save("user://dominion_settings.cfg")
 
 func _authority() -> bool:
 	return not net.in_match or net.hosting
 
 func _show(value: String,context: Dictionary={}) -> void:
+	if value!="play" and is_instance_valid(pad_input):pad_input.stop_firing()
 	screen = value
 	if value!="join":_hide_keyboard()
 	hud_ui.show_screen(value,context)
@@ -291,6 +305,9 @@ func _adapt_orientation() -> void:
 	if get_window().content_scale_size!=base:get_window().content_scale_size=base
 	camera.keep_aspect=Camera3D.KEEP_HEIGHT if wide else Camera3D.KEEP_WIDTH
 	camera.fov=65 if wide else 78
+	var aspect: float=float(get_window().size.x)/maxf(1,get_window().size.y)
+	var vertical_tangent: float=tan(deg_to_rad(camera.fov*.5))/(1.0 if wide else aspect)
+	reload_drop_distance=maxf(.65,vertical_tangent*.9+.08)
 	touch_aim = -1
 	if is_instance_valid(hud_ui):hud_ui.schedule_layout()
 
@@ -300,8 +317,17 @@ func _load_controller_settings() -> void:
 	pad_input.swap_sticks=bool(settings.get_value("controller","swap_sticks",false))
 	var saved: Variant=settings.get_value("controller","bindings",{})
 	if saved is Dictionary:
-		for action in Controller.DEFAULTS:
-			if saved.has(action) and int(saved[action]) in [0,1,2,3,6,7,8,9,10]:pad_input.bind(action,int(saved[action]))
+		if int(settings.get_value("controller","binding_layout",1))<2:
+			pad_input.bindings=Controller.DEFAULTS.duplicate()
+			for action in ["jump","reverse","pause"]:
+				var old := int(saved.get(action,Controller.LEGACY_DEFAULTS[action]))
+				if old!=Controller.LEGACY_DEFAULTS[action] and old in [0,2,3,6,7,8,9]:pad_input.bind(action,old)
+			settings.set_value("controller","bindings",pad_input.bindings.duplicate())
+			settings.set_value("controller","binding_layout",2)
+			settings.save("user://dominion_settings.cfg")
+		else:
+			for action in Controller.DEFAULTS:
+				if saved.has(action) and int(saved[action]) in [0,1,2,3,6,7,8,9,10]:pad_input.bind(action,int(saved[action]))
 
 func _show_controller_options() -> void:
 	var entries: Array=[{"text":"STICK AIM / %d%%" % roundi(pad_input.sensitivity*100),"kind":"controller_sensitivity"},{"text":"DEADZONE / %d%%" % roundi(pad_input.deadzone*100),"kind":"controller_deadzone"},{"text":"SWAP STICKS / %s" % ("ON" if pad_input.swap_sticks else "OFF"),"kind":"controller_swap"}]
@@ -321,7 +347,7 @@ func _show_controller_help() -> void:
 		guide_origin="paused"
 		guide_context={"lan":net.in_match}
 	var stick_guide := "RIGHT STICK / D-PAD: CHOOSE ROUTE\nLEFT STICK: AIM / AUTO FIRE" if pad_input.swap_sticks else "LEFT STICK / D-PAD: CHOOSE ROUTE\nRIGHT STICK: AIM / AUTO FIRE"
-	var guide := "%s\n%s\n%s\nRT: RELOAD / ACTIVE TIMING   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
+	var guide := "%s\n%s\n%s\nRT: MANUAL FIRE (AUTO FIRE ALSO ON)   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
 	_show("controller_help",{"guide":guide})
 
 func _controller_mode(active: bool) -> void:
@@ -342,6 +368,7 @@ func _controller_look(change: Vector2) -> void:
 	if screen=="play" and not demo and _alive(local_id) and not app_paused:_look(change/maxf(.1,aim_sensitivity))
 
 func _controller_command(kind: String,value: Variant) -> void:
+	if kind=="fire" and value==false:_request_action("fire",false);return
 	if app_paused or quitting:return
 	if screen=="title":
 		if kind in ["confirm","pause"]:_show("main")
@@ -349,7 +376,8 @@ func _controller_command(kind: String,value: Variant) -> void:
 	if kind=="controls":_show_controller_help();return
 	if screen=="play":
 		if kind=="pause":_pause()
-		elif kind in ["jump","reverse","reload","suction","turn"]:_request_action(kind,value)
+		elif kind=="reload":_request_action("reload",true)
+		elif kind in ["jump","reverse","suction","turn","fire"]:_request_action(kind,value)
 		return
 	if kind=="nav":hud_ui.navigate(value)
 	elif kind=="confirm":hud_ui.activate_focus()
@@ -382,6 +410,8 @@ func _quit_game(exit_code := 0) -> void:
 	net.close()
 	set_physics_process(false)
 	shot_sound.stop()
+	reload_lower_sound.stop()
+	reload_raise_sound.stop()
 	soundscape.shutdown()
 	await get_tree().create_timer(0.3).timeout
 	get_tree().quit(exit_code)
@@ -391,6 +421,11 @@ func _cycle_volume(value: float) -> float:
 
 func _update_audio() -> void:
 	if is_instance_valid(shot_sound):shot_sound.volume_db = -80 if sound_volume==0 else -12+linear_to_db(sound_volume)
+	var paused_audio: bool = app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"])
+	for effect in [reload_lower_sound,reload_raise_sound]:
+		if is_instance_valid(effect):
+			effect.volume_db=-80 if sound_volume==0 else -17+linear_to_db(sound_volume)
+			effect.stream_paused=paused_audio
 	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"]))
 
 func _show_options() -> void:
@@ -458,6 +493,11 @@ func _start_match(size: int,map_id: int,seed_value: int,human_ids: Array,lan := 
 
 func _setup_round() -> void:
 	shot_sound.stop()
+	reload_lowering=0
+	seen_reload_cycle=0
+	seen_reload_finish=0
+	reload_lower_sound.stop()
+	reload_raise_sound.stop()
 	for body in entities.values():
 		body.collision_layer = 0
 		body.queue_free()
@@ -476,7 +516,7 @@ func _setup_round() -> void:
 	for p in rules.players:
 		var id: int = p["id"]
 		var stat := rules.stats(id)
-		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0},true)
+		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"reload_cycle":0,"reload_finish":0},true)
 		var lane: int = id if p["team"]==0 else id-selected_size
 		var spawn: int = [10,15,20,16][lane] if p["team"]==0 else [14,19,24,18][lane]
 		var body := player if id == local_id else _create_entity(id,"fighter",spawn,id)
@@ -621,7 +661,7 @@ func _input(event: InputEvent) -> void:
 			if event.keycode == KEY_Q:_request_action("reverse")
 			if event.keycode == KEY_SPACE:_request_action("jump")
 			if event.keycode == KEY_E:_request_action("suction")
-			if event.keycode == KEY_R:_request_action("reload")
+			if event.keycode == KEY_R:_request_action("reload",true)
 	if screen != "play" or not _alive(local_id):return
 	if event is InputEventScreenDrag and event.index == touch_aim:_look(event.relative*0.0035)
 	if event is InputEventMouseMotion and Input.mouse_mode==Input.MOUSE_MODE_CAPTURED:_look(event.relative*0.0025)
@@ -650,6 +690,11 @@ func _request_action(kind: String,value: Variant=null) -> void:
 func _apply_action(id: int,kind: String,value: Variant,sequence: int) -> void:
 	if not _authority() or id not in humans or id<0 or id>=rules.players.size():return
 	if rails.has(id):rails[id].last_input = sequence
+	if kind == "fire":
+		if not value is bool:return
+		if not value:rules.players[id]["manual_left"]=0.0;return
+		if rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(id):rules.players[id]["manual_left"]=.5
+		return
 	if kind == "buy":
 		if value is String:_purchase(id,value)
 		return
@@ -668,7 +713,7 @@ func _apply_action(id: int,kind: String,value: Variant,sequence: int) -> void:
 			if rails.has(id):rails[id].jump(_body(id))
 		"reverse":
 			if rails.has(id):rails[id].reverse(_body(id))
-		"reload":_try_reload(id)
+		"reload":_try_reload(id,value==true)
 		"suction":
 			if rules.phase==Rules.Phase.COLLECTION:rules.players[id]["suction"] = 1.6
 
@@ -820,6 +865,7 @@ func _tick_fighter_states(delta: float) -> void:
 		var id: int = p["id"]
 		var stat := rules.stats(id)
 		p["fire_cd"] = maxf(0,p["fire_cd"]-delta)
+		p["manual_left"] = maxf(0,p["manual_left"]-delta)
 		p["invul"] = maxf(0,p["invul"]-delta)
 		p["suction"] = maxf(0,p["suction"]-delta)
 		p["reload_flash"] = maxf(0,p["reload_flash"]-delta)
@@ -836,7 +882,7 @@ func _tick_fighter_states(delta: float) -> void:
 			p["respawn"] = maxf(0,p["respawn"]-delta)
 			if p["respawn"]<=0 and p["lives"]>0:_respawn_fighter(id)
 
-func _try_reload(id: int) -> void:
+func _try_reload(id: int,partial := false) -> void:
 	var p: Dictionary = rules.players[id]
 	if p["reload"]>0:
 		if p["reload_used"]:return
@@ -847,20 +893,24 @@ func _try_reload(id: int) -> void:
 			p["reload_flash"] = 0.45
 			_notify("ACTIVE RELOAD",1.2,id)
 		return
-	if p["ammo"]>0:return
+	if p["ammo"]>=rules.stats(id)["mag"] or (p["ammo"]>0 and not partial):return
 	if p["reserve"]<=0:
 		_notify("NO RESERVE / FIND AMBER AMMO",2,id)
 		return
 	p["reload_total"] = rules.stats(id)["reload"]
 	p["reload"] = p["reload_total"]
 	p["reload_used"] = false
+	p["reload_cycle"] += 1
 
 func _complete_reload(id: int) -> void:
 	var p: Dictionary = rules.players[id]
+	var early: bool = p["reload"]>0
 	var amount := mini(int(rules.stats(id)["mag"])-int(p["ammo"]),int(p["reserve"]))
 	p["ammo"] += amount
 	p["reserve"] -= amount
 	p["reload"] = 0.0
+	p["reload_finish"] += 1
+	if early:p["fire_cd"] = maxf(p["fire_cd"],.14)
 
 func _respawn_fighter(id: int) -> void:
 	var p: Dictionary = rules.players[id]
@@ -904,6 +954,7 @@ func _damage_fighter(victim: int,amount: float,attacker := -1) -> void:
 				_create_corpse(body)
 				body.hide()
 		p["respawn"] = 3.0
+		p["manual_left"] = 0.0
 		p["suction"] = 0.0
 		p["reload"] = 0.0
 		rules.lose_life(victim,attacker)
@@ -1116,6 +1167,9 @@ func _tick_auto_combat(delta: float) -> void:
 		if not _alive(id):continue
 		var p: Dictionary = rules.players[id]
 		var hit := _target_for(id)
+		if p["manual_left"]>0:
+			_fire_manual(id,hit)
+			continue
 		if hit.is_empty():
 			p["deny_id"] = -1
 			p["deny_dwell"] = 0.0
@@ -1149,6 +1203,26 @@ func _tick_auto_combat(delta: float) -> void:
 				if (rules.phase==Rules.Phase.COLLECTION and role=="minion") or (role=="fighter" and rules.can_harm(id,other)):
 					_spend_shot(id)
 					_damage_entity(target,rules.stats(id)["damage"],id)
+
+func _fire_manual(id: int,hit: Dictionary) -> void:
+	if not _can_shoot(id):return
+	var target: Object = hit.get("collider")
+	if target is Area3D and target.has_meta("orb"):
+		var orb := int(target.get_meta("orb"))
+		if cloud.orbs.has(orb) and cloud.orbs[orb]["gold"]:return
+	_spend_shot(id)
+	var p: Dictionary=rules.players[id]
+	p["deny_id"]=-1
+	p["deny_dwell"]=0.0
+	if target is Area3D and target.has_meta("orb"):
+		if cloud.destroy(int(target.get_meta("orb"))):_notify("ESSENCE DENIED",1.3,id)
+	elif target is CharacterBody3D:
+		if target==player:
+			if rules.can_harm(id,local_id):_damage_fighter(local_id,rules.stats(id)["damage"],id)
+		elif target.has_meta("role"):
+			var role: String=target.get_meta("role")
+			var other := int(target.get_meta("fighter"))
+			if (role=="minion" and rules.phase==Rules.Phase.COLLECTION) or (role=="fighter" and rules.can_harm(id,other)):_damage_entity(target,rules.stats(id)["damage"],id)
 
 func _can_shoot(id: int) -> bool:
 	var p: Dictionary = rules.players[id]
@@ -1328,9 +1402,21 @@ func _tick_viewmodel(delta: float) -> void:
 	flash_left = maxf(0,flash_left-delta)
 	flash.visible = flash_left>0
 	gun.position.z = recoil
-	gun.position.y = sin(float(Time.get_ticks_msec())*0.012)*0.002 if camera_motion else 0.0
-	gun.rotation.x = -recoil*0.55
-	gun.rotation.z = -sin(clampf(p["reload"]/maxf(0.1,p["reload_total"]),0,1)*PI)*0.35
+	var reload_progress := 1.0-float(p["reload"])/maxf(.1,p["reload_total"])
+	var lower_target := 0.0
+	if p["reload"]>0:
+		lower_target = smoothstep(0,.15,reload_progress) if reload_progress<.15 else 1.0-smoothstep(.82,1.0,reload_progress)
+	reload_lowering = move_toward(reload_lowering,lower_target,delta*9)
+	gun.position.y = -reload_drop_distance*reload_lowering+(sin(float(Time.get_ticks_msec())*.012)*.002 if camera_motion else 0.0)
+	gun.position.z += .10*reload_lowering
+	gun.rotation.x = -recoil*.55-.12*reload_lowering
+	gun.rotation.z = 0
+	if int(p["reload_cycle"])!=seen_reload_cycle:
+		seen_reload_cycle=int(p["reload_cycle"])
+		if p["reload"]>0 and _alive(local_id):reload_lower_sound.play()
+	if int(p["reload_finish"])!=seen_reload_finish:
+		seen_reload_finish=int(p["reload_finish"])
+		if _alive(local_id):reload_raise_sound.play()
 	hand_amount = move_toward(hand_amount,1.0 if p["suction"]>0 and _alive(local_id) else 0.0,delta*5)
 	hand_root.visible = hand_amount>0.01 and screen=="play"
 	hand_root.position = Vector3(-0.18,-0.55,-0.42).lerp(Vector3(-0.18,-0.20,-0.56),hand_amount)
@@ -1377,8 +1463,9 @@ func _render_hud(delta: float) -> void:
 	var essence_gold: bool = essence_target and cloud.orbs.has(int(hit["collider"].get_meta("orb",-1))) and cloud.orbs[int(hit["collider"].get_meta("orb"))]["gold"]
 	var locked: bool = not hit.is_empty() and hit["collider"] is CharacterBody3D
 	var reload_hint := ""
-	if p["reload"]>0:reload_hint = "TAP IN AMBER" if not p["reload_used"] else "RELOADING"
-	elif p["ammo"]==0:reload_hint = "TAP ANYWHERE / RELOAD" if p["reserve"]>0 else "FIND AMMO"
+	var reload_key: String = pad_input.button_name(pad_input.bindings["reload"]) if pad_input.active else "TAP"
+	if p["reload"]>0:reload_hint = reload_key+" IN AMBER" if not p["reload_used"] else "RELOADING"
+	elif p["ammo"]==0:reload_hint = (reload_key+" / RELOAD" if pad_input.active else "TAP ANYWHERE / RELOAD") if p["reserve"]>0 else "FIND AMMO"
 	elif essence_target:
 		var orb_id: int = hit["collider"].get_meta("orb",-1)
 		reload_hint = "GOLD SOUL / HARVEST ONLY" if cloud.orbs.has(orb_id) and cloud.orbs[orb_id]["gold"] else "HOLD AIM TO DENY / PULL TO COLLECT"
@@ -1420,6 +1507,11 @@ func _apply_snapshot(packet: Dictionary) -> void:
 	rules.match_winner = int(packet["winner"])
 	rules.rewards.assign(packet["rewards"])
 	if old_round!=rules.round_index:
+		reload_lowering=0
+		seen_reload_cycle=0
+		seen_reload_finish=0
+		reload_lower_sound.stop()
+		reload_raise_sound.stop()
 		for body in entities.values():
 			body.collision_layer = 0
 			body.queue_free()

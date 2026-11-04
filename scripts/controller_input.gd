@@ -5,7 +5,8 @@ signal look(radians: Vector2)
 signal mode_changed(active: bool)
 signal disconnected
 signal bindings_changed
-const DEFAULTS := {"jump":JOY_BUTTON_A,"reverse":JOY_BUTTON_B,"reload":JOY_BUTTON_X,"suction":JOY_BUTTON_Y,"pause":JOY_BUTTON_START}
+const LEGACY_DEFAULTS := {"jump":JOY_BUTTON_A,"reverse":JOY_BUTTON_B,"reload":JOY_BUTTON_X,"suction":JOY_BUTTON_Y,"pause":JOY_BUTTON_START}
+const DEFAULTS := {"jump":JOY_BUTTON_A,"reverse":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"suction":JOY_BUTTON_B,"pause":JOY_BUTTON_START}
 var bindings: Dictionary = DEFAULTS.duplicate()
 var device := -1
 var active := false
@@ -20,6 +21,8 @@ var route_latch := ""
 var nav_direction := Vector2.ZERO
 var repeat_left := 0.0
 var trigger_latches: Dictionary = {}
+var firing := false
+var fire_heartbeat := 0.0
 
 func _ready() -> void:
 	Input.joy_connection_changed.connect(_connection)
@@ -37,6 +40,7 @@ func _connection(id: int,connected: bool) -> void:
 		disconnected.emit()
 
 func clear_axes() -> void:
+	stop_firing()
 	axes.clear()
 	held.clear()
 	trigger_latches.clear()
@@ -47,6 +51,7 @@ func clear_axes() -> void:
 func set_active(value: bool) -> void:
 	if value==active:return
 	active=value
+	if not active:stop_firing()
 	mode_changed.emit(active)
 
 func device_name() -> String:
@@ -61,12 +66,12 @@ func button_name(button: int) -> String:
 	return {JOY_BUTTON_BACK:"VIEW",JOY_BUTTON_GUIDE:"HOME",JOY_BUTTON_START:"START",JOY_BUTTON_LEFT_STICK:"L3",JOY_BUTTON_RIGHT_STICK:"R3",JOY_BUTTON_LEFT_SHOULDER:"LB",JOY_BUTTON_RIGHT_SHOULDER:"RB"}.get(button,"BUTTON %d" % button)
 
 func prompt() -> String:
-	return "%s JUMP   %s 180°   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reverse"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
+	return "RT FIRE   %s JUMP   %s 180°   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reverse"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
 
 func shoulder_prompt() -> String:
 	var aliases: Array[String]=[]
 	for button in [JOY_BUTTON_LEFT_SHOULDER,JOY_BUTTON_RIGHT_SHOULDER]:
-		var action := "suction" if button==JOY_BUTTON_LEFT_SHOULDER else "jump"
+		var action := "jump" if button==JOY_BUTTON_LEFT_SHOULDER else "reload"
 		for primary in bindings:
 			if bindings[primary]==button:action=primary
 		aliases.append(button_name(button)+": "+("HARVEST" if action=="suction" else action.to_upper()))
@@ -111,9 +116,15 @@ func handle(event: InputEvent) -> void:
 			return
 		for action in bindings:
 			if bindings[action]==button:command.emit(action,null);return
-		if button==JOY_BUTTON_RIGHT_SHOULDER:command.emit("jump",null)
-		elif button==JOY_BUTTON_LEFT_SHOULDER:command.emit("suction",null)
+		if button==JOY_BUTTON_RIGHT_SHOULDER or button==JOY_BUTTON_X:command.emit("reload",null)
+		elif button==JOY_BUTTON_LEFT_SHOULDER:command.emit("jump",null)
 		elif button==JOY_BUTTON_BACK:command.emit("controls",null)
+
+func stop_firing() -> void:
+	if firing:
+		firing=false
+		command.emit("fire",false)
+	fire_heartbeat=0
 
 func bind(action: String,button: int) -> void:
 	if not bindings.has(action):return
@@ -149,12 +160,21 @@ func step(delta: float) -> void:
 		elif routing.length()>0.65:
 			var route := _route(routing)
 			if route!=route_latch:route_latch=route;command.emit("turn",route)
-		for axis in [JOY_AXIS_TRIGGER_LEFT,JOY_AXIS_TRIGGER_RIGHT]:
+		var right_trigger := float(axes.get(JOY_AXIS_TRIGGER_RIGHT,0))
+		if right_trigger<.3:stop_firing()
+		elif right_trigger>.65 and not firing:
+			firing=true;fire_heartbeat=0
+		if firing:
+			fire_heartbeat-=delta
+			if fire_heartbeat<=0:
+				command.emit("fire",true)
+				fire_heartbeat=.18
+		for axis in [JOY_AXIS_TRIGGER_LEFT]:
 			var value := float(axes.get(axis,0))
 			if value<0.3:trigger_latches[axis]=false
 			elif value>0.65 and not trigger_latches.get(axis,false):
 				trigger_latches[axis]=true
-				command.emit("reverse" if axis==JOY_AXIS_TRIGGER_LEFT else "reload",null)
+				command.emit("reverse",null)
 	else:
 		var direction := Vector2.ZERO
 		for button in [JOY_BUTTON_DPAD_LEFT,JOY_BUTTON_DPAD_RIGHT,JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_DOWN]:

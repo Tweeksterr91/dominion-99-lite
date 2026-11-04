@@ -16,6 +16,9 @@ var gold_seen := false
 var gold_placed := false
 var reversed := false
 var reverse_received := false
+var manual_received := false
+var trigger_pressed := false
+var trigger_released := false
 var variant_seen := {}
 var launch_position := Vector3.ZERO
 func _initialize() -> void:call_deferred("start")
@@ -30,7 +33,8 @@ func start() -> void:
  game.net.launch.connect(func(_config):started_at=Time.get_ticks_msec();launch_position=game.player.position)
  game.net.state_received.connect(func(_packet):received+=1)
  game.net.action_received.connect(func(_id,kind,_value,_sequence):
-  if kind=="reverse":reverse_received=true)
+  if kind=="reverse":reverse_received=true
+  if kind=="fire" and _value==true:manual_received=true)
  game.net.fighter_disconnected.connect(func(_fid):disconnected=true)
  if hosting:
   assert(game.net.host(4,0,27809)==OK)
@@ -72,6 +76,7 @@ func _process(_delta: float) -> bool:
   if elapsed>2 and not switched_shop:
    assert(game.rails[4].last_input>0,"Remote aiming reaches host")
    assert(reverse_received,"Remote reversal reaches host")
+   assert(manual_received and game.rules.players[4]["ammo"]<12,"Host validates controller manual shots")
    game.rules.credit_essence(4,140)
    game.rules.remaining = 0.001
    switched_shop = true
@@ -97,6 +102,14 @@ func _process(_delta: float) -> bool:
    game._input(press)
    press.pressed=false;game._input(press)
    reversed=true
+  if phase==0 and elapsed>.9 and not trigger_pressed:
+   var trigger:=InputEventJoypadMotion.new()
+   trigger.device=99;trigger.axis=JOY_AXIS_TRIGGER_RIGHT;trigger.axis_value=1
+   game._input(trigger);trigger_pressed=true
+  if phase==0 and elapsed>1.65 and not trigger_released:
+   var trigger:=InputEventJoypadMotion.new()
+   trigger.device=99;trigger.axis=JOY_AXIS_TRIGGER_RIGHT;trigger.axis_value=0
+   game._input(trigger);trigger_released=true
   if phase==1 and not buy_sent:
    game._request_action("buy","needle")
    game._request_action("ready")
@@ -110,7 +123,7 @@ func _process(_delta: float) -> bool:
    assert(game.rules.rewards.size()==8,"Guest sees every player's gift")
    assert(game.player.position.distance_to(launch_position)>1,"Guest predicts actual movement")
    assert(game.entities.has(0) and game.entities.size()>=7,"Guest receives all fighters")
-   print("PASS: LAN client: remote input, ",received," snapshots, authoritative purchase, all phases, 8 rolls, reversal, gold and variants, movement")
+   print("PASS: LAN client: remote input, ",received," snapshots, authoritative purchase, all phases, 8 rolls, reversal, manual fire, gold and variants, movement")
    game.net.close()
    game._quit_game()
  return false

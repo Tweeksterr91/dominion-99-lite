@@ -43,3 +43,7 @@ Players use the original Sentinel: rounded graphite ceramic armor, enclosed resp
 ## Rotate & Play (v0.6.0)
 
 Portrait keeps the established corner HUD and circular center-bottom actions. Landscape uses a wider camera view, compact center-bottom touch actions, an open center crosshair, and menus laid out across two columns. Controller input hides touch actions and displays compact binding prompts; amber brackets indicate menu focus. Safe-area insets keep edge statistics clear of Android cutouts in either orientation. Switching orientation or input device preserves the live match.
+
+## Trigger & Reload (v0.7.0)
+
+Reload uses a clear lower/hold/raise motion: the existing weapon drops below the camera edge, mechanical foley marks the reload, and it returns smoothly. Camera-aware displacement keeps the gun out of frame in portrait as well as landscape. Active reload speeds up the return while allowing a brief ready interval. Two original synthesized foley clips provide the lowering mechanism and final ready click; no GoldenEye content is reused. Controller prompts show RT fire, RB reload, B harvest, Y reverse, and A jump, with LB jump and LT reverse shortcuts.
