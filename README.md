@@ -32,7 +32,7 @@ Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FP
 
 ## Install and update
 
-Open the latest release while signed into the GitHub account with access to this private repository. Download `dominion-99-lite.apk`, open it from Downloads, and choose Install or Update. Allow installation from the app opening the APK if Android asks. The package and development signing key are preserved between versions; Godot is not needed to play. Keep the existing installation to retain settings and campaign unlocks.
+Open the latest release; the project and APK downloads are public and do not require a GitHub account. Download `dominion-99-lite.apk`, open it from Downloads, and choose Install or Update. Allow installation from the app opening the APK if Android asks. The package and development signing key are preserved between versions; Godot is not needed to play. Keep the existing installation to retain settings and campaign unlocks.
 
 ## Match flow
 
