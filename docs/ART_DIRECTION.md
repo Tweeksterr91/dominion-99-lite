@@ -31,3 +31,7 @@ All assets are bundled for offline play. The fixed 60 FPS cap remains; richer ma
 See [ASSET_CREDITS.md](../ASSET_CREDITS.md) for creator attribution, source links, modifications, and component licenses. Code, original sidearm, and generated scenery are MIT; adapted Sinbad assets and gameplay previews containing them are CC BY-SA 3.0. Scanned surface maps and the lighting panorama are CC0. The in-game menu has ART CREDITS.
 
 The images in `biomes/` are in-engine captures with bots positioned for visibility. The release's short video records an actual auto-run with a queued turn and automatic shooting.
+
+## Souls & Ash interface (v0.4.0)
+
+Use transparent screen-edge statistics, Rajdhani typography, warm amber vector navigation, and icy blue essence accents. The center remains open for aim and the active reload ring. Jump uses an original jumping-person glyph below the ahead arrow. Menus layer typography over a running in-engine demo; match shopping and shared rolls freeze combat behind a subtle full-screen gradient. The open essence glove is an original Blender asset with a blue palm focus. Full asset notices remain in ASSET_CREDITS.md.

@@ -1,79 +1,82 @@
 # Dominion '99 (Lite)
 
-A modern take on the classic fps arena shooter, with a bit more depth.
+A dark sci-fi portrait auto-runner FPS for Android: aim, choose routes, harvest essence, and hunt rivals.
 
-**[Download Android APK — v0.3.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.3.0/dominion-99-lite.apk)** · **[All releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download APK — v0.4.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.4.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
-A portrait auto-runner FPS for Android. Movement, firing, and reloading happen automatically; the player concentrates on aim, route choices, jumps, double jumps, and drops. This is an **offline development prototype with bots**, not online multiplayer.
+Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FPS cap**, portrait orientation. Actual phone performance and Wi-Fi behavior still need device testing.
 
-![In-engine auto-runner preview](docs/preview.png)
+![Portrait gameplay HUD](docs/preview.png)
 
-The v0.3.0 visual foundation uses scanned 1K surface maps, a modeled sidearm, an imported rigged creature, running/jumping animations, smoother scenery, environment reflections, and directional shadows. This is a move toward a more grounded look, not a finished photorealistic art set. A short gameplay animation preview is included in the release assets.
+## Install and update
 
-[Asset credits and licenses](ASSET_CREDITS.md)
+Open the latest release while signed into the GitHub account with access to this private repository. Download `dominion-99-lite.apk`, open it from Downloads, and choose Install or Update. Allow installation from the app opening the APK if Android asks. The package and development signing key are preserved between versions; Godot is not needed to play. Keep the existing installation to retain settings and campaign unlocks.
 
-## Install on your phone
+## Match flow
 
-Download `dominion-99-lite.apk` from the latest release, open it from Downloads, and tap Install or Update. Approve installation for the app opening the APK if Android asks. Godot is not needed to play. New APKs use the original package and signing key, so they can install over previous versions.
+A match has **five rounds**. Everyone starts **each round with five lives**.
 
-## Play
+1. **Collection — 2:45.** Players cannot damage each other. Kill smaller PvE minions; each drops three hovering blue essence clusters above its corpse. Tap the blue essence icon on the left to extend a hand and draw nearby visible essence into it. Souls are credited on arrival. A closer collector can steal a cluster already being pulled. Hold the crosshair on essence for 0.55 seconds to shoot and deny it; nobody receives those souls. Pulling suppresses your own denial shots.
+2. **Shop — up to 1:00.** Spend souls on three weapon profiles, damage/health/shield/reload upgrades, health restoration, or reserve ammo. Ready up when done; the shop closes early if everyone is ready. Movement and combat stop during shopping.
+3. **Shared roll — 6 seconds.** Every player receives one small random passive benefit. Everyone sees all rolls before hunting begins. Benefits include +2% damage, +5 shield, 3% faster reload, +1 m pull reach, or slightly earlier shield recovery. Gifts stack across rounds.
+4. **Hunting — 2:45.** Fight the opposing team; friendly fire is disabled. Death consumes one life and respawns after three seconds while lives remain. An eliminated player spectates until the next round. Eliminating a team ends hunting early.
 
-1. Hold the phone upright. Tap the biome selector to choose a map, then START RUN.
-2. The character runs forward automatically. Drag the open play area to aim independently of the run direction.
-3. The crosshair turns amber over a visible bot. The pistol fires while the crosshair is on that bot and reloads automatically when empty. There are no fire, reload, running, or strafing controls.
-4. Queue LEFT, AHEAD, or RIGHT for the next junction. A checkmark confirms the selected route. The route happens when you reach the junction. If nothing is queued, the runner continues ahead when possible, otherwise takes an available turn.
-5. Route labels show JUMP, 2x JUMP, or DROP when the next hallway changes elevation. DOWN queues an available descending hallway at the next junction; it is not a crouch button.
-6. Press JUMP just before a marked ledge. Tap JUMP AGAIN while airborne for higher double-jump landings. Only two jumps are available before landing. An on-screen cue shows the approaching ledge distance. Missing a landing or getting blocked returns you to the start of that hallway and costs 25 shield/health.
-7. One thumb can aim while the other uses the contextual controls. Six bots traverse the same hallway graph and can pass through junctions on their own routes. Defeated bots respawn farther away.
-8. Health and regenerating shield stay in the lower left. Magazine and reserve ammo stay in the lower right. Green pickups restore health, amber pickups supply ammo. Shield recharges at 20 per second after four seconds without damage.
+Round standings prioritize remaining team lives, then frags, then collected essence. The team with more round wins wins the match; equal round wins are a draw. Souls, owned weapons, upgrades, gifts, and match frags persist between rounds. Health, shield, lives, and starting ammunition reset for the next round.
 
-The II button pauses. You can resume or change biome to start a fresh run. This is an endless survival route prototype, with distance, junction, and kill counters rather than the old three-wave arena mode. There are no accounts, ads, online players, or saved progression.
+## Controls and HUD
 
-Desktop controls: mouse aim, A/Left or D/Right for a queued turn, W/Up for ahead, S/Down for a descending route, Space for jump/double jump, Esc to pause. Mouse clicks do not fire.
+- The character runs automatically. Drag the open play area to aim; a visible enemy under the crosshair is shot automatically. There is no running, strafing, or fire button.
+- Amber left/ahead/right arrows queue the next junction decision. The jumping-person icon sits below the ahead arrow. Tap once to jump, twice for a double jump; DOWN queues an available descending route. Route hints identify elevated paths. Missing a landing returns the runner to that hallway's start and costs 25 shield/health.
+- **An empty magazine waits for a tap anywhere to start reloading.** The crosshair ring shows reload progress. A second tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. There is no separate reload button.
+- Lives sit at the upper left; souls and frags at the upper right. The phase timer sits at the top center. Health and regenerating shield hug the bottom left; ammo and reserve hug the bottom right. No dark HUD panels.
+- Green pickups restore health; amber pickups supply ammunition. Shield recovers at 20/second after four seconds without damage, modified by gifts.
+- Pause freezes offline matches. **LAN matches continue behind the pause menu.** Keep the host app in the foreground.
 
-## Biomes
+Desktop testing: mouse aim, A/D/W/S (or arrows) for routes, Space to jump/double jump, E to pull essence, R or mouse tap to reload, Esc to pause.
 
-Each biome has a different connected layout built from a shared 25-junction grid, with loops, crossings, and routes at different heights. These are initial modular environment treatments using scanned materials. Their layout and scenery still need further art refinement.
+## Menus and campaign
 
-| Biome | Environment | Preview |
-| --- | --- | --- |
-| Verdant Ruins | Mossy green masonry and overgrown chambers | [View](docs/biomes/ruins.png) |
-| Blue Catacombs | Cool blue-gray stone corridors | [View](docs/biomes/catacombs.png) |
-| Ember Vault | Basalt-colored chambers, warm details, lava outside routes | [View](docs/biomes/volcanic.png) |
-| Rootbound Forest | Open tree-lined routes and low mossy walls | [View](docs/biomes/forest.png) |
-| Dune Coast | Sandstone routes, dunes, stylized palms, and coastal colors | [View](docs/biomes/dunes.png) |
+The title screen runs a real AI-controlled gameplay demonstration behind the logo. Tap to enter the main menu: **Single Player Campaign**, **Multiplayer**, **Options**, **Quit Game**, and art credits.
 
-## Edit on your OnePlus 12R
+The initial campaign is a sequence of bot matches across five biome maps, unlocked by winning: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast. It is a match-based campaign foundation, without story cinematics. Options persist aim sensitivity, invert aim, sound volume, and camera motion. Weapon profiles currently share the modeled sidearm with size adjustments.
 
-Install the official Godot Editor for Android from Google Play or https://godotengine.org/download/android/. Download and extract this repository's source ZIP, import its `project.godot`, and tap Run Project. Use the standard editor; this project uses GDScript. The arena is generated at runtime, so the editor viewport is initially empty.
+## Local Wi-Fi / direct-IP multiplayer
 
-- `scripts/runner.gd`: active auto-runner mode, aiming, auto combat, route decisions, bots, and UI.
-- `scripts/corridor_map.gd`: connected biome layouts, floors, walls, jump gaps, and scenery.
-- `scripts/runner_reticle.gd`: target-reactive crosshair.
-- `scripts/main.gd`: reusable combat, shield, audio, weapon, pickup, and UI helpers; also retains the older arena implementation for reference.
-- `scripts/visual_assets.gd`: imported weapon/creature scene setup, animation playback, and pickup kit.
-- `assets/models/sidearm.glb`: original modeled sidearm and glove.
-- `assets/models/warden.glb`: adapted Sinbad creature with a skeleton and running, idle, and jump clips.
-- `art_sources/`: Blender asset builders and conversion tools; I can maintain these for you.
-- `assets/textures/`: scanned ambientCG color/normal/roughness maps and Poly Haven lighting panorama.
-- `assets/skin.gdshader`: grounded material tinting for the imported character. The older procedural surface shaders remain for the legacy kit.
-- `docs/ART_DIRECTION.md`: visual design notes.
+**1v1, 2v2, 3v3, and 4v4** use a phone as the authoritative ENet host. Empty slots are filled with bots. At least two human phones are required to launch a LAN match; Practice With Bots works offline in every format.
 
-Built with Godot 4.6.3, Compatibility renderer, batched scenery, mipmapped surface textures, 2x anti-aliasing, and a single short-range directional shadow map. Character animation pauses with gameplay. The menu has an ART CREDITS view. The game has a fixed **60 FPS cap**; actual performance still needs testing on the OnePlus 12R.
+1. Install the same game version on all phones and connect to the same Wi-Fi or phone hotspot.
+2. Host: Multiplayer → team format → Host Room. The lobby displays the host's local IP address and UDP port **27799**.
+3. Guests: Multiplayer → Join Room. Enter the host's numeric Wi-Fi IP address, connect, and tap Ready.
+4. Host taps Start Match after guests are ready. The next human joins the opposing team first.
 
-## Validation
+Wi-Fi networks with client isolation can block phone-to-phone traffic; try a private router or hotspot. This version has no Internet matchmaking, cloud server, account login, or NAT traversal. A disconnected guest is replaced by a bot; if the host leaves, guests return to the menu. Rejoining an ongoing match is not supported yet.
 
-Run these from the project directory:
+The host validates movement/actions, hits, damage, purchases, essence ownership, and rolls. Clients predict local movement and receive compressed, bounded UDP snapshot fragments. Two real local game processes have been tested through collection, shopping, shared rolls, hunting, purchases, and disconnect takeover. Testing on two physical Android phones remains necessary.
+
+## Source and assets
+
+Import `project.godot` in the official Godot Editor for Android to edit on your phone. The world is built at runtime. The Compatibility renderer uses scanned 1K materials, mipmaps, 2x anti-aliasing, and one short-range directional shadow map. This is an evolving art foundation, with an animated imported creature and original modeled weapon/essence hand.
+
+- `scripts/souls_arena.gd`: active game, menus, combat, AI, local prediction and host simulation.
+- `scripts/match_rules.gd`: five-round rules, economy, team protection, rolls.
+- `scripts/lan_session.gd`: LAN rooms, readiness, validated actions and snapshot transport.
+- `scripts/rail_motion.gd`: shared host/client autorun and real jump physics.
+- `scripts/arena_hud.gd`, `match_reticle.gd`, `ui_glyph.gd`: portrait UI and original vector icons.
+- `scripts/essence_cloud.gd`: shared essence, stealing, denial, batched particles.
+- `scripts/corridor_map.gd`, `visual_assets.gd`: five connected layouts, art and animation helpers.
+- `scripts/runner.gd`, `main.gd`: earlier prototype and reusable foundation.
+- `art_sources/`: editable Blender generation and conversion scripts.
+
+See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated scenery, sidearm, hand, and icons use MIT. The adapted Sinbad creature and its textures use CC BY-SA 3.0; scans and lighting panorama are CC0. Rajdhani uses SIL OFL. Screenshots/video containing Sinbad are CC BY-SA 3.0 with attribution in ASSET_CREDITS.md.
+
+## Validation and releases
 
 ```sh
-godot --headless --path . --script tests/runner_smoke.gd
-godot --headless --path . --script tests/traversal.gd
+godot --headless --path . --script tests/match_rules_test.gd
+godot --headless --path . --script tests/souls_game_test.gd
+godot --headless --path . --script tests/rail_traversal.gd
 ```
 
-The first checks auto reload, crosshair-triggered fire, two-thumb controls, all five connected/different layouts, shared bot routes, actual skeletal joint motion, animation pause, credits navigation, shield, portrait HUD, pause, and restart. The second checks real physics traversal: automatic running, a queued corner, single jump, double jump, and drop. `tests/smoke.gd` checks the older shared combat/arena base.
+For the two-process LAN integration test, start `tests/lan_game_peer.gd -- host`, then `tests/lan_game_peer.gd -- client` in separate Godot processes on the same machine (UDP 27809). Both must report PASS. The test advances timers to exercise all phases quickly. Legacy tests remain for the shared arena and older runner.
 
-## Future APK updates
-
-Use a new numbered GitHub Release for each APK and increase `version/code` and `version/name` in `export_presets.cfg`. Keep using the original signing key for development updates. Keys and credentials stay outside the repository. This is a development-signed build; store distribution needs release signing.
-
-Original code, the sidearm, and generated scenery use MIT. The adapted Sinbad model/textures use CC BY-SA 3.0; scanned textures and the lighting panorama are CC0. See ASSET_CREDITS.md and the in-game ART CREDITS view. Godot and bundled fonts retain their own licenses. The project name has not been checked for trademark availability.
+Every update gets a numbered GitHub Release with a new APK. Increase `version/code` and `version/name`, keep the original signing key outside the repository, and verify the APK before upload. Current builds use development signing; store distribution requires release signing.

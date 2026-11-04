@@ -7,7 +7,7 @@ func check(condition: bool, detail: String) -> void:
   failed = true
   push_error(detail)
 func verify() -> void:
- var game = load("res://main.tscn").instantiate()
+ var game = load("res://scripts/runner.gd").new()
  root.add_child(game)
  current_scene = game
  game.set_physics_process(false)
