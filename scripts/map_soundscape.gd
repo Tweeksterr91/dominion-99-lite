@@ -4,7 +4,7 @@ const TRACKS := ["verdant_circuit","cold_reliquary","ember_pressure","root_signa
 var music: AudioStreamPlayer
 var ambience: AudioStreamPlayer
 var map_id := -1
-var music_level := 0.35
+var music_level := 0.7
 var ambience_level := 0.5
 var suspended := false
 func _ready() -> void:
@@ -35,7 +35,7 @@ func configure(music_volume: float,ambience_volume: float,paused: bool) -> void:
 	music.stream_paused = suspended or music_level==0
 	ambience.stream_paused = suspended or ambience_level==0
 func _process(delta: float) -> void:
-	music.volume_db = move_toward(music.volume_db,-14+linear_to_db(maxf(0.001,music_level)),delta*45)
+	music.volume_db = move_toward(music.volume_db,-10+linear_to_db(maxf(0.001,music_level)),delta*45)
 	ambience.volume_db = move_toward(ambience.volume_db,-22+linear_to_db(maxf(0.001,ambience_level)),delta*45)
 
 func shutdown() -> void:

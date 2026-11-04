@@ -6,7 +6,7 @@ func check(ok: bool,detail: String) -> void:
   push_error(detail)
 func _initialize() -> void:call_deferred("verify")
 func verify() -> void:
- var g = load("res://main.tscn").instantiate()
+ var g = load("res://tests/legacy_fixture.gd").new()
  root.add_child(g)
  current_scene = g
  g.set_physics_process(false)

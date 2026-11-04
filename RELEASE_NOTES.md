@@ -1,15 +1,14 @@
-# v0.7.0 — Trigger & Reload
+# v0.8.0 — Off the Rails
 
-- **RT: manual fire**, while crosshair auto-fire remains enabled. Hold RT to shoot at the current aim, including misses. Manual and automatic firing share the same cooldown and magazine, preventing double-speed shots.
-- **RB: reload / active reload**. X remains an alternate reload input. Explicit controller/keyboard reloads also support partly used magazines without discarding remaining rounds. Touch taps continue to start reload only when empty.
-- **B: harvest souls**. **Y/LT: 180° turn**, **A/LB: jump/double jump**, Start pauses. Prompts and controller guide reflect the new layout. Existing default profiles migrate automatically; unrelated custom bindings are preserved where possible.
-- Classic weapon-lowering reload presentation: gun dips fully below the screen, original mechanical reload foley plays, then the gun rises back. Drop distance adapts to portrait and landscape projection. Active reload produces a quicker raise with a brief ready delay.
-- Original lowering/raising sounds follow effects volume and offline pause. No GoldenEye assets or sounds are used.
-- Manual shots can immediately deny blue essence; indestructible gold remains protected. Collection/hunting damage restrictions remain enforced by the host.
-- LAN manual-fire state uses heartbeat, release, pause cleanup and timeout protection against stuck firing.
+- Free forward/backward movement and strafing on the left stick or new touch joystick. Full 360° aiming; release movement to stop. Players, bots and minions move with actual world collision. Auto-fire remains enabled; RT still fires manually, RB reloads/attempts active reload, B harvests, A/LB jumps, Y/LT turns 180°.
+- Visible traveling projectiles for players, bots and minions. The new starting weapon is a five-shell single-barrel pump shotgun with seven pellets per shot, animated pump, more humanlike first-person arms, and original firing/pump/shell-loading sounds. Classic weapon-lowering reload remains.
+- Five rebuilt biome arenas: circular central rotunda, elevated ring, side rotundas, upper balconies, ramps on normal routes and optional genuine jump islands. Low railings are collidable and jumpable. Falling off costs a life.
+- Shared time-of-day and weather RNG reveal before each match. Seeded conditions are identical for all LAN players; the reveal does not consume collection time. Lighting, sky and weather particles change with the roll.
+- New original 134–146 BPM arena-techno music, a louder mix, and 70% default effects/music. Existing custom settings are retained; old untouched defaults migrate. Brown-noise ambience keeps its separate control.
+- Portrait, landscape, controller support, five-round economy, soul stealing/denial and gold-soul protection remain supported.
 
-Install `dominion-99-lite.apk` over the existing installation. Same application ID and signing certificate; versionCode 10. **All LAN participants must update to v0.7.0** (protocol 7).
+Install `dominion-99-lite.apk` over the existing game. Same package and development signing identity; versionCode 11. **All LAN players must update to v0.8.0** (protocol 8).
 
-Validated: binding migration, held RT cadence/release/timeout, automatic-fire coexistence, actual raycast target damage, blue denial and gold immunity, RB tactical/active reload, ammunition conservation, down/hold/up motion, reload audio, B harvest/Y reverse; existing controller navigation, portrait/landscape rotation, physics traversal, economy and match tests. Two-process 4v4 LAN passes with a landscape host, portrait guest, and controller-originated manual shots. Physical Backbone, phone audio mix and frame rate still need hardware testing.
+Validated with Godot physics/navigation across all five maps, free move/stop/strafe, ramps, jumpable rails and falling, delayed pellet collisions and damage protections, viewmodel/audio, responsive touch HUD, rules and menu checks. Two actual local game processes exercise 4v4 LAN with landscape host, portrait guest, free controller movement, manual shots, visible projectiles, synchronized weather/time, purchases, shared rolls, hunting and bot takeover. Physical OnePlus/Backbone performance, audio balance and two-phone Wi-Fi behavior still need hardware testing. This remains a development prototype, not finished photorealistic art.
 
-Original project content and reload foley: MIT; adapted Sinbad minions by Zi Ye: CC BY-SA 3.0; ambientCG/Poly Haven: CC0; Rajdhani: SIL OFL. Full notices: ASSET_CREDITS.md.
+Original code/models/shotgun sounds/music: MIT; adapted Sinbad minions by Zi Ye: CC BY-SA 3.0; ambientCG/Poly Haven: CC0; Rajdhani: SIL OFL. Full notices: ASSET_CREDITS.md.

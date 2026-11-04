@@ -33,3 +33,7 @@ pointing/emulate_touch_from_mouse=false
 
 [audio]
 driver/enable_input=false
+
+[navigation]
+3d/default_cell_size=0.3
+3d/default_cell_height=0.15

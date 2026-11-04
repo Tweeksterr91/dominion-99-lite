@@ -12,7 +12,7 @@ func axis(id: int,value: float) -> void:
  var e:=InputEventJoypadMotion.new();e.device=99;e.axis=id;e.axis_value=value
  game._input(e)
 func verify() -> void:
- game=load("res://main.tscn").instantiate()
+ game=load("res://tests/legacy_fixture.gd").new()
  root.add_child(game);current_scene=game
  game.set_physics_process(false)
  game.pad_input.set_physics_process(false)

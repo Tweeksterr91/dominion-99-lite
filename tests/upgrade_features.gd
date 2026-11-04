@@ -4,7 +4,7 @@ func check(ok: bool,message: String) -> void:
  if not ok:failed=true;push_error(message)
 func _initialize() -> void:call_deferred("verify")
 func verify() -> void:
- var g = load("res://main.tscn").instantiate()
+ var g = load("res://tests/legacy_fixture.gd").new()
  root.add_child(g)
  current_scene=g
  g._start_match(2,0,99,[0])

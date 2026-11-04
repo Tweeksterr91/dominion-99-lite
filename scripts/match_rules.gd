@@ -7,7 +7,8 @@ const HUNT_TIME := 165.0
 const ROUND_COUNT := 5
 const ROUND_LIVES := 5
 const WEAPONS := {
-	"pulse": {"name": "D-9 PULSE", "damage": 34.0, "interval": 0.22, "mag": 12, "reload": 1.6, "cost": 0},
+	"pump": {"name":"D-99 PUMP", "damage":15.0, "pellets":7, "spread":0.055, "speed":58.0, "interval":0.9, "mag":5, "reload":2.8, "cost":0},
+	"pulse": {"name": "D-9 PULSE", "damage": 34.0, "interval": 0.22, "mag": 12, "reload": 1.6, "cost": 60},
 	"needle": {"name": "NEEDLE CARBINE", "damage": 23.0, "interval": 0.13, "mag": 24, "reload": 1.9, "cost": 80},
 	"scatter": {"name": "ASH SCATTERGUN", "damage": 62.0, "interval": 0.60, "mag": 6, "reload": 1.8, "cost": 100},
 }
@@ -43,7 +44,7 @@ func start(team_size := 1, seed_value := 99) -> void:
 	players.clear()
 	var names := ["YOU", "VEX", "MORROW", "ASH", "VALE", "ECHO", "ROOK", "CINDER"]
 	for i in range(team_size * 2):
-		players.append({"id": i, "name": names[i], "team": 0 if i < team_size else 1, "lives": ROUND_LIVES, "souls": 0, "frags": 0, "round_frags": 0, "essence": 0, "round_essence": 0, "minions": 0, "weapon": "pulse", "owned": ["pulse"], "upgrades": {}, "gifts": {}, "ready": false})
+		players.append({"id": i, "name": names[i], "team": 0 if i < team_size else 1, "lives": ROUND_LIVES, "souls": 0, "frags": 0, "round_frags": 0, "essence": 0, "round_essence": 0, "minions": 0, "weapon": "pump", "owned": ["pump"], "upgrades": {}, "gifts": {}, "ready": false})
 	round_index = 1
 	team_rounds = [0, 0]
 	match_winner = -1

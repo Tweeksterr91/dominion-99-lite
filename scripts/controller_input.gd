@@ -23,6 +23,9 @@ var repeat_left := 0.0
 var trigger_latches: Dictionary = {}
 var firing := false
 var fire_heartbeat := 0.0
+var free_movement := true
+var move_heartbeat := 0.0
+var last_move := Vector2.ZERO
 
 func _ready() -> void:
 	Input.joy_connection_changed.connect(_connection)
@@ -41,6 +44,7 @@ func _connection(id: int,connected: bool) -> void:
 
 func clear_axes() -> void:
 	stop_firing()
+	stop_moving()
 	axes.clear()
 	held.clear()
 	trigger_latches.clear()
@@ -51,7 +55,7 @@ func clear_axes() -> void:
 func set_active(value: bool) -> void:
 	if value==active:return
 	active=value
-	if not active:stop_firing()
+	if not active:stop_firing();stop_moving()
 	mode_changed.emit(active)
 
 func device_name() -> String:
@@ -103,7 +107,8 @@ func handle(event: InputEvent) -> void:
 			return
 		var direction: Vector2 = {JOY_BUTTON_DPAD_LEFT:Vector2.LEFT,JOY_BUTTON_DPAD_RIGHT:Vector2.RIGHT,JOY_BUTTON_DPAD_UP:Vector2.UP,JOY_BUTTON_DPAD_DOWN:Vector2.DOWN}.get(button,Vector2.ZERO)
 		if direction!=Vector2.ZERO:
-			if playing:command.emit("turn",_route(direction))
+			if playing:
+				if not free_movement:command.emit("turn",_route(direction))
 			else:
 				nav_direction=direction;repeat_left=.4
 				command.emit("nav",direction)
@@ -119,6 +124,10 @@ func handle(event: InputEvent) -> void:
 		if button==JOY_BUTTON_RIGHT_SHOULDER or button==JOY_BUTTON_X:command.emit("reload",null)
 		elif button==JOY_BUTTON_LEFT_SHOULDER:command.emit("jump",null)
 		elif button==JOY_BUTTON_BACK:command.emit("controls",null)
+
+func stop_moving() -> void:
+	if last_move!=Vector2.ZERO:command.emit("move",Vector2.ZERO)
+	last_move=Vector2.ZERO;move_heartbeat=0
 
 func stop_firing() -> void:
 	if firing:
@@ -156,7 +165,15 @@ func step(delta: float) -> void:
 	if playing:
 		var aim := filtered(aiming)
 		if aim!=Vector2.ZERO:look.emit(aim*2.6*sensitivity*minf(delta,0.05))
-		if routing.length()<0.35:route_latch=""
+		if free_movement:
+			var movement:=filtered(routing)
+			for button in [JOY_BUTTON_DPAD_LEFT,JOY_BUTTON_DPAD_RIGHT,JOY_BUTTON_DPAD_UP,JOY_BUTTON_DPAD_DOWN]:
+				if held.has(button):movement+={JOY_BUTTON_DPAD_LEFT:Vector2.LEFT,JOY_BUTTON_DPAD_RIGHT:Vector2.RIGHT,JOY_BUTTON_DPAD_UP:Vector2.UP,JOY_BUTTON_DPAD_DOWN:Vector2.DOWN}[button]
+			movement=movement.limit_length(1)
+			move_heartbeat-=delta
+			if move_heartbeat<=0 or (movement==Vector2.ZERO and last_move!=Vector2.ZERO):
+				command.emit("move",movement);last_move=movement;move_heartbeat=1.0/30
+		elif routing.length()<0.35:route_latch=""
 		elif routing.length()>0.65:
 			var route := _route(routing)
 			if route!=route_latch:route_latch=route;command.emit("turn",route)

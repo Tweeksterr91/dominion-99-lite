@@ -11,7 +11,7 @@ func trigger(value: float) -> void:
  var e:=InputEventJoypadMotion.new();e.device=99;e.axis=JOY_AXIS_TRIGGER_RIGHT;e.axis_value=value
  game._input(e);game.pad_input.step(.016)
 func verify() -> void:
- game=load("res://main.tscn").instantiate();root.add_child(game);current_scene=game
+ game=load("res://tests/legacy_fixture.gd").new();root.add_child(game);current_scene=game
  game._start_match(1,0,99,[0]);game.set_physics_process(false);game.pad_input.set_physics_process(false)
  game.settings.set_value("controller","bindings",game.Controller.LEGACY_DEFAULTS.duplicate())
  game.settings.set_value("controller","binding_layout",1)

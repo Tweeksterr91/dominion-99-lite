@@ -1,6 +1,16 @@
+# Dominion '99 (Lite): free arena direction (v0.8.0)
+
+The active game is a free-moving arena FPS with portrait and landscape layouts. Its five biome arenas use circular rotundas, a raised ring, side chambers, upper balconies and ramps, with optional jump islands and jumpable low railings. Bots and minions use navigation over real collision geometry.
+
+The starting weapon is an original single-barrel pump shotgun with anatomical first-person arms, a moving fore-end and dedicated synthesized audio. Its visible pellets, enemy bolts, seeded lighting and biome-appropriate weather reinforce combat feedback. Time and weather are revealed before the match. Original arena techno replaces the earlier ambient loops, with brown-noise ambience underneath.
+
+The art remains a prototype with scanned 1K surfaces, original Sentinel players and adapted Sinbad minions. It is not finished photorealistic scenery. Actual OnePlus 12R rendering performance and controller behavior require device testing. Sources and component licenses are recorded in [ASSET_CREDITS.md](../ASSET_CREDITS.md).
+
+The notes below document earlier iterations; rail movement and their older map layouts are no longer active.
+
 # Dominion '99 (Lite): grounded dark sci-fi
 
-The goal is a more realistic look for the portrait auto-runner FPS. Turok: Rage Wars, Quake, Unreal Tournament 3, and Quake 3 Arena inform combat weight and atmosphere. The initial block-built kit was a prototype; the active visual pass now uses scanned surface materials and imported animated geometry.
+The earlier goal was a more realistic look for the portrait auto-runner FPS. Turok: Rage Wars, Quake, Unreal Tournament 3, and Quake 3 Arena inform combat weight and atmosphere. The initial block-built kit was a prototype; the active visual pass now uses scanned surface materials and imported animated geometry.
 
 ## Biomes
 

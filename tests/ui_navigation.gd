@@ -30,6 +30,6 @@ func verify() -> void:
  tap(g,"SINGLE PLAYER CAMPAIGN")
  assert(g.screen=="campaign")
  tap(g,"01 / VERDANT RUINS")
- assert(g.screen=="play")
+ assert(g.screen=="conditions")
  print("PASS: actual touch button dispatch, menus, host lobby, leave, settings, campaign")
  g._quit_game()

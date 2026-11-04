@@ -679,7 +679,7 @@ func _controller_screen(value: String,context: Dictionary) -> void:
 	var w := overlay.size.x
 	_wide_text({"controller_options":"CONTROLLER SETTINGS","bind_controller":"BIND BUTTON","controller_help":"CONTROLLER GUIDE"}[value],.5,28 if landscape else h*.14,minf(w-30,700),60,34 if landscape else 36)
 	if value=="bind_controller":
-		_wide_text("%s\nPress a face, shoulder, stick-click, or Start button.\nView / Select cancels. D-pad stays reserved for routes." % str(context.get("action","")).to_upper(),.5,h*.35,minf(w-40,700),190,24)
+		_wide_text("%s\nPress a face, shoulder, stick-click, or Start button.\nView / Select cancels. D-pad stays reserved for movement." % str(context.get("action","")).to_upper(),.5,h*.35,minf(w-40,700),190,24)
 		_footer("CANCEL","controller_cancel_bind")
 	elif value=="controller_help":
 		_wide_text(context.get("guide",""),.5,125 if landscape else h*.30,minf(w-40,760),300 if landscape else 510,20)
