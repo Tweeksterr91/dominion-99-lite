@@ -1,13 +1,16 @@
-# v0.10.0 — Touch Fire & Killer Souls
+# v0.11.0 — Plasma Armory
 
-- Auto-fire is available only while holding a touchscreen aiming touch. Controller/mouse aim requires manual shooting (RT / left mouse button). A charged LT lock still requires RT on a controller. Aim-touch release, input switching, pause/backgrounding and missing network heartbeats cancel auto-fire. Movement and HUD touches do not enable it.
-- Shooting effects play at half their previous amplitude, including the pump cycle and distant player/bot/minion shots. Reload effects, music, ambience and saved volume settings stay independent.
-- Removed the soul-harvesting hand, touchscreen button, controller B harvest binding and keyboard E action. Weapon hands remain.
-- Minion orbs automatically fly to the fighter who lands the killing shot. Claimed blue/gold orbs cannot be stolen or destroyed; they credit the killer on arrival. The reward stays with that fighter even if they die. Pending rewards settle before the shop, and particles/ownership/currency replicate from the host. Gold treasure kills still award 90 souls. The obsolete pull-range gift now grants +1 m lock range as TARGET REACH.
-- Rival bot ground movement reduced from 5.0 to 3.2 m/s; minions move 15% slower. Player speed stays unchanged. Bots retain brief jump assistance to cross optional platforms.
+- Removed the shadow gradient from title and main menu screens; the gameplay demonstration remains visible.
+- Three rounds per match. Collection/hunting are each 82.5 seconds, shopping is up to 30 seconds, and the shared perk reveal is 3 seconds. The opening weather reveal remains 6 seconds. Treasure spawn timing is scaled to the shorter collection phase.
+- Hold LB for the weapon wheel, select with the aim stick/D-pad, and release to equip. B cancels. Touch gets a hold-and-drag wheel button; desktop uses Tab plus mouse. A jumps; LB is now the wheel. The match stays live while selecting, with movement/aim/fire suppressed.
+- Every player starts with the pump shotgun and a blue/red team-colored plasma scythe. Pump ammunition has unlimited reserve while magazine reloads and active reload remain. The scythe has unlimited use, a short forward melee arc, original swing sound/animation, and respects walls and team damage rules.
+- Acquire all six weapons together. Each keeps separate magazine/reserve counts across combat swaps, with no free refill from switching or cancelled reloads. Ownership persists across rounds, and ammunition resets each round.
+- New sawed-off double-barrel shotgun upgrade for 140 souls: two shells, wider ten-pellet blasts, unlimited reserve and its own model. The original pump remains selectable. The scythe also appears on other players/bots with the correct team color.
+- LT holds one target until release, even if another enemy crosses the aim. Losing visibility/range or losing the target resets charge without switching to a different enemy; release/re-press to acquire another.
+- Rival bot turning reduced to 65°/s and minion turning to 50°/s. Bot firing cooldowns are 30% longer; minion attack cooldowns are 25% longer. Previously reduced movement speeds remain.
 
-Install `dominion-99-lite.apk` over the existing installation. Same package and signing certificate; versionCode 15. **All LAN players must update to v0.10.0** (protocol 10).
+Install `dominion-99-lite.apk` over the existing game. Same package/signing identity, versionCode 16. **All LAN players must update to v0.11.0** (protocol 11).
 
-Validated: real touch/controller input transitions, manual RT, auto-fire release/timeout, measured shooting gains, removed harvesting presentation, killing-shot ownership, automatic blue/gold collection, theft/denial protection, dead-killer and phase-end reward settlement, slower physical bot movement, portrait/landscape weapon framing, reloads, navigation, rules and UI. Two real local game processes verify touch/manual shooting and killer rewards between portrait guest and landscape host, alongside full 4v4 phase/economy and optional-lock integration checks. Physical Android/Backbone feel, audio balance and performance still need device testing.
+Validation: three-round timing and reset rules; no start-menu gradient; inventory/purchases; infinite shotgun and melee use; per-weapon ammo and cancelled reloads; controller/touch wheel selection and remapping; melee range, team protection and wall occlusion; double-barrel pellets; sticky lock; slower bot cadence; portrait/landscape framing and existing collection/navigation/UI checks. Two actual local game processes verify wheel selection, all-weapon ownership, finite ammo across swaps and team-colored scythes, alongside the full 4v4 match/economy, lock and killer-reward tests. Physical Android/Backbone feel, visuals and performance still need device testing.
 
-Original code/audio/art: MIT; full component attribution and licenses are in ASSET_CREDITS.md.
+Original armory models, wheel UI and synthesized scythe audio: MIT. Full component notices: ASSET_CREDITS.md.

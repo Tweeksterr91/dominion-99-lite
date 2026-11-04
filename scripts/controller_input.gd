@@ -21,9 +21,10 @@ var route_latch := ""
 var nav_direction := Vector2.ZERO
 var repeat_left := 0.0
 var trigger_latches: Dictionary = {}
+var wheel_open := false
 var locking := false
 var lock_heartbeat := 0.0
-const FREE_DEFAULTS := {"jump":JOY_BUTTON_A,"lock":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"pause":JOY_BUTTON_START}
+const FREE_DEFAULTS := {"jump":JOY_BUTTON_A,"lock":JOY_BUTTON_Y,"reload":JOY_BUTTON_RIGHT_SHOULDER,"wheel":JOY_BUTTON_LEFT_SHOULDER,"pause":JOY_BUTTON_START}
 var firing := false
 var fire_heartbeat := 0.0
 var free_movement := true
@@ -46,6 +47,7 @@ func _connection(id: int,connected: bool) -> void:
 		disconnected.emit()
 
 func clear_axes() -> void:
+	stop_wheel()
 	stop_firing()
 	stop_locking()
 	stop_moving()
@@ -59,7 +61,7 @@ func clear_axes() -> void:
 func set_active(value: bool) -> void:
 	if value==active:return
 	active=value
-	if not active:stop_firing();stop_locking();stop_moving()
+	if not active:stop_wheel();stop_firing();stop_locking();stop_moving()
 	mode_changed.emit(active)
 
 func device_name() -> String:
@@ -74,13 +76,13 @@ func button_name(button: int) -> String:
 	return {JOY_BUTTON_BACK:"VIEW",JOY_BUTTON_GUIDE:"HOME",JOY_BUTTON_START:"START",JOY_BUTTON_LEFT_STICK:"L3",JOY_BUTTON_RIGHT_STICK:"R3",JOY_BUTTON_LEFT_SHOULDER:"LB",JOY_BUTTON_RIGHT_SHOULDER:"RB"}.get(button,"BUTTON %d" % button)
 
 func prompt() -> String:
-	if free_movement:return "LT LOCK   RT FIRE   %s JUMP   %s RELOAD" % [button_name(bindings["jump"]),button_name(bindings["reload"]) ]
+	if free_movement:return "LB WHEEL   LT LOCK   RT FIRE   %s JUMP   %s RELOAD" % [button_name(bindings["jump"]),button_name(bindings["reload"]) ]
 	return "RT FIRE   %s JUMP   %s 180°   %s RELOAD   %s HARVEST" % [button_name(bindings["jump"]),button_name(bindings["reverse"]),button_name(bindings["reload"]),button_name(bindings["suction"])]
 
 func shoulder_prompt() -> String:
 	var aliases: Array[String]=[]
 	for button in [JOY_BUTTON_LEFT_SHOULDER,JOY_BUTTON_RIGHT_SHOULDER]:
-		var action := "jump" if button==JOY_BUTTON_LEFT_SHOULDER else "reload"
+		var action := ("wheel" if free_movement else "jump") if button==JOY_BUTTON_LEFT_SHOULDER else "reload"
 		for primary in bindings:
 			if bindings[primary]==button:action=primary
 		aliases.append(button_name(button)+": "+("HARVEST" if action=="suction" else action.to_upper()))
@@ -95,6 +97,7 @@ func handle(event: InputEvent) -> void:
 	elif event is InputEventJoypadButton:
 		if not event.pressed:
 			held.erase(event.button_index)
+			if free_movement and event.button_index in [bindings.get("wheel",JOY_BUTTON_LEFT_SHOULDER),JOY_BUTTON_LEFT_SHOULDER]:stop_wheel()
 			return
 		if event.device!=device:clear_axes();device=event.device
 		set_active(true)
@@ -113,7 +116,8 @@ func handle(event: InputEvent) -> void:
 		var direction: Vector2 = {JOY_BUTTON_DPAD_LEFT:Vector2.LEFT,JOY_BUTTON_DPAD_RIGHT:Vector2.RIGHT,JOY_BUTTON_DPAD_UP:Vector2.UP,JOY_BUTTON_DPAD_DOWN:Vector2.DOWN}.get(button,Vector2.ZERO)
 		if direction!=Vector2.ZERO:
 			if playing:
-				if not free_movement:command.emit("turn",_route(direction))
+				if wheel_open:command.emit("wheel_cycle",-1 if direction.x<0 or direction.y<0 else 1)
+				elif not free_movement:command.emit("turn",_route(direction))
 			else:
 				nav_direction=direction;repeat_left=.4
 				command.emit("nav",direction)
@@ -124,12 +128,18 @@ func handle(event: InputEvent) -> void:
 			elif button==JOY_BUTTON_START:command.emit("pause",null)
 			elif button==JOY_BUTTON_BACK:command.emit("controls",null)
 			return
+		if wheel_open and button not in [bindings.get("wheel",JOY_BUTTON_LEFT_SHOULDER),JOY_BUTTON_LEFT_SHOULDER,bindings["pause"],JOY_BUTTON_BACK]:
+			if button==JOY_BUTTON_B:wheel_open=false;command.emit("wheel_cancel",null)
+			return
 		for action in bindings:
 			if bindings[action]==button:
-				if action!="lock":command.emit(action,null)
+				if action=="wheel":wheel_open=true;command.emit("wheel",true)
+				elif action!="lock":command.emit(action,null)
 				return
 		if button==JOY_BUTTON_RIGHT_SHOULDER or button==JOY_BUTTON_X:command.emit("reload",null)
-		elif button==JOY_BUTTON_LEFT_SHOULDER:command.emit("jump",null)
+		elif button==JOY_BUTTON_LEFT_SHOULDER:
+			if free_movement:wheel_open=true;command.emit("wheel",true)
+			else:command.emit("jump",null)
 		elif button==JOY_BUTTON_BACK:command.emit("controls",null)
 
 func stop_moving() -> void:
@@ -170,6 +180,8 @@ func step(delta: float) -> void:
 	var aiming := left if swap_sticks else right
 	var routing := right if swap_sticks else left
 	if playing:
+		if wheel_open:
+			stop_moving();stop_firing();stop_locking();command.emit("wheel_aim",aiming);return
 		var aim := filtered(aiming)
 		if aim!=Vector2.ZERO:look.emit(aim*2.6*sensitivity*minf(delta,0.05))
 		if free_movement:
@@ -221,3 +233,6 @@ func stop_locking() -> void:
 	if locking:locking=false;command.emit("lock",false)
 	lock_heartbeat=0
 func default_bindings() -> Dictionary:return FREE_DEFAULTS.duplicate() if free_movement else DEFAULTS.duplicate()
+
+func stop_wheel() -> void:
+	if wheel_open:wheel_open=false;command.emit("wheel",false)

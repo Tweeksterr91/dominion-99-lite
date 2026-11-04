@@ -1,13 +1,16 @@
 extends RefCounted
-## Authoritative, renderer-independent five-round match rules.
+## Authoritative, renderer-independent three-round match rules.
 enum Phase { COLLECTION, SHOP, REVEAL, HUNT, RESULTS }
-const COLLECTION_TIME := 165.0
-const SHOP_TIME := 60.0
-const HUNT_TIME := 165.0
-const ROUND_COUNT := 5
+const COLLECTION_TIME := 82.5
+const SHOP_TIME := 30.0
+const HUNT_TIME := 82.5
+const ROUND_COUNT := 3
+const REVEAL_TIME := 3.0
 const ROUND_LIVES := 5
 const WEAPONS := {
-	"pump": {"name":"D-99 PUMP", "damage":15.0, "pellets":7, "spread":0.055, "speed":58.0, "interval":0.9, "mag":5, "reload":2.8, "cost":0},
+	"pump": {"name":"D-99 PUMP", "damage":15.0, "pellets":7, "spread":0.055, "speed":58.0, "interval":0.9, "mag":5, "reload":2.8, "cost":0,"infinite":true},
+	"scythe":{"name":"PLASMA SCYTHE","damage":75.0,"interval":.95,"mag":1,"reload":0.0,"cost":0,"infinite":true,"melee":true,"range":3.0},
+	"double":{"name":"SAWED-OFF DOUBLE","damage":15.0,"pellets":10,"spread":.10,"speed":58.0,"interval":.55,"mag":2,"reload":2.2,"cost":140,"infinite":true},
 	"pulse": {"name": "D-9 PULSE", "damage": 34.0, "interval": 0.22, "mag": 12, "reload": 1.6, "cost": 60},
 	"needle": {"name": "NEEDLE CARBINE", "damage": 23.0, "interval": 0.13, "mag": 24, "reload": 1.9, "cost": 80},
 	"scatter": {"name": "ASH SCATTERGUN", "damage": 62.0, "interval": 0.60, "mag": 6, "reload": 1.8, "cost": 100},
@@ -44,7 +47,7 @@ func start(team_size := 1, seed_value := 99) -> void:
 	players.clear()
 	var names := ["YOU", "VEX", "MORROW", "ASH", "VALE", "ECHO", "ROOK", "CINDER"]
 	for i in range(team_size * 2):
-		players.append({"id": i, "name": names[i], "team": 0 if i < team_size else 1, "lives": ROUND_LIVES, "souls": 0, "frags": 0, "round_frags": 0, "essence": 0, "round_essence": 0, "minions": 0, "weapon": "pump", "owned": ["pump"], "upgrades": {}, "gifts": {}, "ready": false})
+		players.append({"id": i, "name": names[i], "team": 0 if i < team_size else 1, "lives": ROUND_LIVES, "souls": 0, "frags": 0, "round_frags": 0, "essence": 0, "round_essence": 0, "minions": 0, "weapon": "pump", "owned": ["pump","scythe"], "upgrades": {}, "gifts": {}, "ready": false})
 	round_index = 1
 	team_rounds = [0, 0]
 	match_winner = -1
@@ -76,7 +79,7 @@ func advance() -> void:
 			_set_phase(Phase.SHOP, SHOP_TIME)
 		Phase.SHOP:
 			_roll_gifts()
-			_set_phase(Phase.REVEAL, 6.0)
+			_set_phase(Phase.REVEAL, REVEAL_TIME)
 		Phase.REVEAL:
 			_set_phase(Phase.HUNT, HUNT_TIME)
 		Phase.HUNT:
@@ -178,9 +181,9 @@ func buy(id: int, item: String) -> bool:
 	p["upgrades"][item] = level + 1
 	return true
 
-func stats(id: int) -> Dictionary:
+func stats(id: int, weapon_id := "") -> Dictionary:
 	var p := players[id]
 	var u: Dictionary = p["upgrades"]
 	var g: Dictionary = p["gifts"]
-	var weapon: Dictionary = WEAPONS[p["weapon"]]
+	var weapon: Dictionary = WEAPONS[p["weapon"] if weapon_id.is_empty() else weapon_id]
 	return {"health": 100 + int(u.get("health", 0)) * 20, "shield": 100 + int(u.get("shield", 0)) * 20 + int(g.get("aegis", 0)) * 5, "damage": weapon["damage"] * (1.0 + int(u.get("damage", 0)) * 0.05 + int(g.get("edge", 0)) * 0.02), "interval": weapon["interval"], "mag": weapon["mag"], "reload": weapon["reload"] * pow(0.92, int(u.get("reload", 0))) * pow(0.97, int(g.get("chamber", 0))), "reach": 12.0 + int(g.get("reach", 0)), "shield_delay": maxf(2.0, 4.0 - int(g.get("recovery", 0)) * 0.15)}

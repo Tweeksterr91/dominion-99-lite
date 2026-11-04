@@ -17,7 +17,7 @@ func verify() -> void:
  g=load("res://main.tscn").instantiate();root.add_child(g);current_scene=g
  g._start_match(1,0,99,[0]);g.set_physics_process(false);g.pad_input.set_physics_process(false)
  await wait_nav()
- check(g.screen=="conditions" and g.prelude_left==6 and g.rules.remaining==165,"Shared environment reveal precedes full collection timer")
+ check(g.screen=="conditions" and g.prelude_left==6 and g.rules.remaining==82.5,"Shared environment reveal precedes full collection timer")
  check(is_equal_approx(g.sound_volume,.7) and is_equal_approx(g.music_volume,.7),"Fresh effects and music default to 70 percent")
  check(g.rules.players[0]["weapon"]=="pump" and g.rules.players[0]["ammo"]==5,"Starting weapon is a five-shell pump shotgun")
  check(g.shotgun_rig.has_node("PumpSlide") and g.shotgun_rig.has_node("SupportArm"),"Pump and human arms are real separate model parts")
@@ -28,7 +28,7 @@ func verify() -> void:
  check(times.size()==4 and weather.has("RAIN") and weather.has("SNOW"),"Random rolls cover multiple times and biome weather")
  for i in range(365):g._physics_process(1.0/60)
  g.set_physics_process(false)
- check(g.prelude_left==0 and g.screen=="play" and g.rules.remaining>164,"Reveal does not consume collection time")
+ check(g.prelude_left==0 and g.screen=="play" and g.rules.remaining>82.4,"Reveal does not consume collection time")
  var map=g.get_world_3d().navigation_map
  for target in [Vector3(0,4,23),Vector3(35,4,0),Vector3(35,8,-8),Vector3(22,5,22)]:
   var path=NavigationServer3D.map_get_path(map,Vector3.ZERO,target,true)

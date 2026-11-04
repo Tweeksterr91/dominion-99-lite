@@ -110,8 +110,8 @@ func verify() -> void:
  g._purchase(0,"needle")
  check(p["weapon"]=="needle" and p["ammo"]==24,"Shop equips real weapon stats")
  g.rules.ready(0)
- g._tick_bot_shopping() # timer still 60; bot not ready yet
- g.rules.remaining = 57
+ g._tick_bot_shopping() # timer still 30; bot not ready yet
+ g.rules.remaining = 27
  g._tick_bot_shopping()
  g._handle_phase_change()
  check(g.screen=="reveal" and g.rules.rewards.size()==2,"Both players receive visible roll")

@@ -40,17 +40,17 @@ func run() -> void:
  g._fire_weapon(0)
  check(p["ammo"]==0 and p["reload"]>0 and not p["reload_used"],"Final shell immediately starts automatic reload without consuming active attempt")
  p["reload"]=p["reload_total"]*.35;g._try_reload(0,true)
- check(p["reload"]==0 and p["ammo"]==5 and p["reserve"]==5 and p["reload_flash"]>0,"Active reload stays available during automatic reload and conserves ammunition")
+ check(p["reload"]==0 and p["ammo"]==5 and p["reserve"]==-1 and p["reload_flash"]>0,"Active reload stays available during automatic reload and conserves ammunition")
  axis(JOY_AXIS_TRIGGER_LEFT,1);g._tick_locks(.05)
  minion.position=Vector3(0,0,40)
  await physics_frame;g._tick_locks(.016)
- check(g.lock_states[0]["target"]==-1 and g._lock_progress(0)==0 and not g._can_shoot(0),"Losing target resets charge and prevents firing while LT stays held")
+ check(g.lock_states[0]["chosen"] and g.lock_states[0]["target"]>=0 and g._lock_progress(0)==0 and not g._can_shoot(0),"Losing target resets charge and prevents firing while LT stays held")
  axis(JOY_AXIS_TRIGGER_LEFT,0)
  minion.position=Vector3(0,0,3)
  var bot=g.entities[1];bot.position=Vector3(0,0,-5);g.enemy_motions[1].aim_yaw=0;bot.rotation.y=0
  g.rules.players[1]["fire_cd"]=0;g.rules.players[1]["ammo"]=5
  await physics_frame;g._tick_bots(1.0/60)
- check(absf(g.enemy_motions[1].aim_yaw)<=deg_to_rad(90)/60+.001,"Enemy bots turn at a bounded 90 degrees per second")
+ check(absf(g.enemy_motions[1].aim_yaw)<=deg_to_rad(65)/60+.001,"Enemy bots turn at a bounded 65 degrees per second")
  check(g.rules.players[1]["ammo"]==5,"A bot cannot shoot backward while it is turning")
  for size in [Vector2i(540,1206),Vector2i(1206,540)]:
   root.size=size

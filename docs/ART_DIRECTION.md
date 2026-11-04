@@ -1,3 +1,9 @@
+# Plasma Armory (v0.11.0)
+
+Title/main gradients are removed. The new radial wheel displays all six slots, highlights the chosen acquired weapon, and marks locked slots. The pump/scythe are always owned; the pump and sawed-off double have infinite reserve, while the scythe has unlimited use. Original double-barrel and plasma-scythe models share the existing anatomical weapon hand; the scythe edge follows red/blue team color and has a swing animation/sound. The double barrel uses its own shorter paired barrels and walnut fore-end.
+
+Earlier iteration notes follow.
+
 # Automatic killer rewards (v0.10.0)
 
 The soul-harvest button and separate absorbing-hand model are removed from active gameplay. Blue/gold orbs now home directly to the killing fighter’s body and are protected in transit. Weapon hands and the corrected portrait weapon framing remain. The controller guide shows manual RT fire, with auto-fire reserved for a held touchscreen aim touch. Shooting/pump effects are mixed at half their prior amplitude.

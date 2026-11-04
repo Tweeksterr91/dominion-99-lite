@@ -5,6 +5,7 @@ const GlyphView = preload("res://scripts/glyph_view.gd")
 const Reticle = preload("res://scripts/match_reticle.gd")
 const FONT = preload("res://assets/fonts/Rajdhani-Medium.ttf")
 const BOLD = preload("res://assets/fonts/Rajdhani-Bold.ttf")
+const MATCH_RULES=preload("res://scripts/match_rules.gd")
 const AMBER := Color("edb45d")
 var root: Control
 var stats: Control
@@ -45,14 +46,14 @@ func _ready() -> void:
 	_icon(stats,"life",Vector2(0,0),Vector2(18,25),Vector2(28,28))
 	labels["lives"] = _label(stats,"5",Vector2(50,18),Vector2(60,44),32)
 	labels["life_caption"] = _label(stats,"LIVES",Vector2(20,59),Vector2(80,20),12)
-	labels["timer"] = _label(stats,"02:45",Vector2.ZERO,Vector2(146,44),34)
+	labels["timer"] = _label(stats,"01:23",Vector2.ZERO,Vector2(146,44),34)
 	_place(labels["timer"],Vector2(0.5,0),Vector2(-73,22),Vector2(146,44))
 	labels["timer"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	labels["phase"] = _label(stats,"COLLECTION A",Vector2.ZERO,Vector2(210,24),15)
 	_place(labels["phase"],Vector2(0.5,0),Vector2(-105,64),Vector2(210,24))
 	labels["phase"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	labels["phase"].modulate = AMBER
-	labels["round"] = _label(stats,"ROUND 1 / 5",Vector2.ZERO,Vector2(140,20),12)
+	labels["round"] = _label(stats,"ROUND 1 / 3",Vector2.ZERO,Vector2(140,20),12)
 	_place(labels["round"],Vector2(0.5,0),Vector2(-70,5),Vector2(140,20))
 	labels["round"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_icon(stats,"soul",Vector2(1,0),Vector2(-113,25),Vector2(25,25))
@@ -333,17 +334,18 @@ func show_screen(value: String,context: Dictionary) -> void:
 	overlay.visible = value != "play"
 	if controller_mode:call_deferred("_restore_focus",saved_focus)
 	if value == "play":return
-	var texture := GradientTexture2D.new()
-	var gradient := Gradient.new()
-	gradient.colors = PackedColorArray([Color(0.015,0.02,0.03,0.25),Color(0.015,0.02,0.03,0.78)])
-	texture.gradient = gradient
-	texture.fill_from = Vector2.ZERO
-	texture.fill_to = Vector2(0,1)
-	var scrim := TextureRect.new()
-	scrim.texture = texture
-	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(scrim)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if value not in ["title","main"]:
+		var texture := GradientTexture2D.new()
+		var gradient := Gradient.new()
+		gradient.colors = PackedColorArray([Color(0.015,0.02,0.03,0.25),Color(0.015,0.02,0.03,0.78)])
+		texture.gradient = gradient
+		texture.fill_from = Vector2.ZERO
+		texture.fill_to = Vector2(0,1)
+		var scrim := TextureRect.new()
+		scrim.texture = texture
+		scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(scrim)
+		scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	if landscape:
 		_landscape_screen(value,context)
 		return
@@ -431,7 +433,7 @@ func show_screen(value: String,context: Dictionary) -> void:
 			_menu_line("RETURN TO MAIN MENU",0.59,"abandon")
 			_info("LAN matches keep running while this menu is open." if context.get("lan",false) else "Your match is paused.",0.72)
 		"shop":
-			_info("Spend souls. Ready up when finished.\nShopping closes after one minute.",0.22)
+			_info("Spend souls. Ready up when finished.\nShopping closes after 30 seconds.",0.22)
 			var items: Array = context.get("items",[])
 			for i in range(items.size()):
 				var item: Dictionary = items[i]
@@ -511,7 +513,7 @@ func update_view(view: Dictionary,delta: float) -> void:
 	var seconds := ceili(float(view.get("remaining",165)))
 	labels["timer"].text = "%02d:%02d" % [seconds/60,seconds%60]
 	labels["phase"].text = view.get("phase_name","COLLECTION A")
-	labels["round"].text = "ROUND %d / 5" % view.get("round",1)
+	labels["round"].text = "ROUND %d / %d" % [view.get("round",1),MATCH_RULES.ROUND_COUNT]
 	labels["health"].text = str(ceili(view.get("health",100)))
 	labels["shield"].text = str(ceili(view.get("shield",100)))
 	health_bar.max_value = view.get("max_health",100)
@@ -546,7 +548,7 @@ func update_view(view: Dictionary,delta: float) -> void:
 	down.disabled = not view.get("can_drop",false) or not view.get("alive",true)
 	essence.disabled = not view.get("can_collect",true) or not view.get("alive",true)
 	if screen == "reveal":
-		_update_rewards(view.get("rewards",[]),view.get("names",[]),float(view.get("remaining",6))<3.2)
+		_update_rewards(view.get("rewards",[]),view.get("names",[]),float(view.get("remaining",MATCH_RULES.REVEAL_TIME))<MATCH_RULES.REVEAL_TIME*.53)
 
 func _restore_focus(key: String) -> void:
 	if not controller_mode:return
@@ -650,7 +652,7 @@ func _landscape_screen(value: String,context: Dictionary) -> void:
 			_wide_button("RETURN TO MAIN MENU",.5,310,450,"abandon")
 			_wide_text("LAN keeps running behind this menu." if context.get("lan",false) else "Your match is paused.",.5,365,700,60)
 		"shop":
-			_wide_text("Spend souls. Ready up when finished. Shopping closes after one minute.",.5,155,w-60,32,17)
+			_wide_text("Spend souls. Ready up when finished. Shopping closes after 30 seconds.",.5,155,w-60,32,17)
 			var items: Array=context.get("items",[])
 			for i in range(items.size()):
 				var item: Dictionary=items[i]

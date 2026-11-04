@@ -153,7 +153,7 @@ func _save_settings() -> void:
 		settings.set_value("controller","deadzone",pad_input.deadzone)
 		settings.set_value("controller","swap_sticks",pad_input.swap_sticks)
 		settings.set_value("controller","bindings",pad_input.bindings)
-		settings.set_value("controller","binding_layout",2)
+		settings.set_value("controller","binding_layout",3 if pad_input.free_movement else 2)
 	settings.save("user://dominion_settings.cfg")
 
 func _authority() -> bool:
@@ -353,6 +353,7 @@ func _show_controller_help() -> void:
 	if pad_input.free_movement:stick_guide=stick_guide.replace("CHOOSE ROUTE","MOVE / STRAFE")
 	var guide := "%s\n%s\n%s\nRT: MANUAL FIRE (AUTO FIRE ALSO ON)   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
 	if pad_input.free_movement:guide=guide.replace("LT: 180°","LT: HOLD TO LOCK / CHARGE TO GREEN").replace("AIM / AUTO FIRE","AIM (RT TO FIRE)").replace("(AUTO FIRE ALSO ON)","(AUTO FIRE IS TOUCH-AIM ONLY)")
+	if pad_input.free_movement:guide+="\nWEAPON WHEEL: hold LB, choose with aim stick / D-pad, release to equip."
 	_show("controller_help",{"guide":guide})
 
 func _controller_mode(active: bool) -> void:
@@ -819,7 +820,7 @@ func _handle_phase_change() -> void:
 				_save_settings()
 			var p: Dictionary = rules.players[local_id]
 			var winner := "MATCH DRAW" if rules.match_winner<0 else ("VICTORY" if rules.match_winner==p["team"] else "DEFEAT")
-			_show("results",{"summary":"%s\n\nROUNDS  %d : %d\n%d FRAGS / %d SOULS COLLECTED\n\nFive-round match complete." % [winner,rules.team_rounds[0],rules.team_rounds[1],p["frags"],p["essence"]]})
+			_show("results",{"summary":"%s\n\nROUNDS  %d : %d\n%d FRAGS / %d SOULS COLLECTED\n\nThree-round match complete." % [winner,rules.team_rounds[0],rules.team_rounds[1],p["frags"],p["essence"]]})
 			_set_animations(false)
 
 func _show_shop() -> void:

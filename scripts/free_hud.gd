@@ -1,5 +1,7 @@
 extends "res://scripts/arena_hud.gd"
 const Stick=preload("res://scripts/touch_stick.gd")
+var wheel: Control
+var wheel_button: Control
 var stick: Control
 var lock_button: Control
 var lock_brackets: Control
@@ -8,6 +10,8 @@ func _ready() -> void:
 	stick=Stick.new();combat.add_child(stick);stick.moved.connect(func(value):action.emit("move",value))
 	lock_button=preload("res://scripts/lock_button.gd").new();combat.add_child(lock_button);lock_button.held.connect(func(value):action.emit("lock",value))
 	lock_brackets=preload("res://scripts/lock_brackets.gd").new();combat.add_child(lock_brackets);lock_brackets.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wheel=preload("res://scripts/weapon_wheel.gd").new();combat.add_child(wheel);wheel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wheel_button=preload("res://scripts/weapon_wheel_button.gd").new();combat.add_child(wheel_button);wheel_button.held.connect(func(value):action.emit("wheel",value))
 	schedule_layout()
 func _layout_combat() -> void:
 	super._layout_combat()
@@ -19,6 +23,9 @@ func _layout_combat() -> void:
 	_place(lock_button,Vector2(0,1),Vector2(67+safe_margins.x,-410),Vector2(70,70))
 	lock_button.visible=not controller_mode
 	stick.visible=not controller_mode
+	if is_instance_valid(wheel_button):
+		_place(wheel_button,Vector2(1,1),Vector2(-177-safe_margins.z,-255),Vector2(68,68))
+		wheel_button.visible=not controller_mode
 	_place(labels["route"],Vector2(.5,0),Vector2(-250,94),Vector2(500,26))
 	labels["route"].horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 func set_controller_mode(value: bool,help_text := "") -> void:
@@ -26,6 +33,7 @@ func set_controller_mode(value: bool,help_text := "") -> void:
 	for button in routes.values():button.hide()
 	down.hide();reverse.hide();essence.hide()
 	if is_instance_valid(stick):stick.visible=not value
+	if is_instance_valid(wheel_button):wheel_button.visible=not value
 	if is_instance_valid(lock_button):
 		lock_button.visible=not value
 		if value:lock_button.release()
@@ -44,6 +52,8 @@ func show_screen(value: String,context: Dictionary) -> void:
 	if is_instance_valid(lock_button) and value!="play":lock_button.release()
 func update_view(view: Dictionary,delta: float) -> void:
 	super.update_view(view,delta)
+	if view.get("infinite_ammo",false):labels["reserve"].text="∞"
+	if view.get("melee",false):labels["ammo"].text="∞";labels["reserve"].text=""
 	reticle.lock_active=view.get("lock_active",false);reticle.lock_progress=view.get("lock_progress",0.0)
 	lock_brackets.target=view.get("lock_rect",Rect2());lock_brackets.queue_redraw()
 	if screen=="conditions":

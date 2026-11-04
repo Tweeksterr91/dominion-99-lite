@@ -31,7 +31,7 @@ func _process(_delta: float) -> bool:
  var elapsed: float=(Time.get_ticks_msec()-started)/1000.0
  if host:
   if elapsed>6.3 and not configured:
-   g.rules.phase=g.Rules.Phase.HUNT;g.rules.revision+=1;g.rules.remaining=165;g._handle_phase_change()
+   g.rules.phase=g.Rules.Phase.HUNT;g.rules.revision+=1;g.rules.remaining=82.5;g._handle_phase_change()
    g.player.position=Vector3(0,.05,3);g.rails[0].aim_yaw=PI;g.player.rotation.y=PI
    g.entities[1].position=Vector3(0,.05,8);g.rails[1].aim_yaw=0;g.rails[1].pitch=atan2(-.3,5)
    g.rules.players[0]["hp"]=1000;g.rules.players[0]["shield"]=1000;configured=true

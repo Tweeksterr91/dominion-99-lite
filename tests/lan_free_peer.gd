@@ -49,7 +49,7 @@ func _process(_delta: float) -> bool:
  var elapsed: float=(Time.get_ticks_msec()-started)/1000.0
  phases[g.rules.phase]=true
  if host:
-  if elapsed<5.8:assert(g.rules.remaining==165,"Prelude does not eat collection time")
+  if elapsed<5.8:assert(g.rules.remaining==82.5,"Prelude does not eat collection time")
   if elapsed>6.2 and not gold_seen:g.cloud.spawn(Vector3(0,2,0),15,-1,true);gold_seen=true
   if elapsed>9.0 and not shop_started:
    assert(move_seen and fire_seen and g.rules.players[4]["ammo"]<5,"Host receives movement and manual pellet shots")
@@ -77,6 +77,6 @@ func _process(_delta: float) -> bool:
    assert(g.player.position.distance_to(initial)>1,"Client predicts genuine free movement")
    assert(Vector2(g.player.velocity.x,g.player.velocity.z).length()<.1,"Releasing movement stops the client")
    assert(g.rules.players[4]["weapon"]=="needle" and g.rules.players[4]["souls"]==60,"Shop remains authoritative")
-   print("PASS: LAN free client: ",packets," snapshots, portrait/landscape, shared weather RNG, free move/stop, visible pellets, economy and five-round phases")
+   print("PASS: LAN free client: ",packets," snapshots, portrait/landscape, shared weather RNG, free move/stop, visible pellets, economy and three-round phases")
    g.net.close();g._quit_game()
  return false

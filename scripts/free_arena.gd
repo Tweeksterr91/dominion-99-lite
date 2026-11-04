@@ -1,4 +1,7 @@
 extends "res://scripts/souls_arena.gd"
+const Inventory=preload("res://scripts/weapon_inventory.gd")
+const DOUBLE=preload("res://assets/models/double_barrel.glb")
+const SCYTHE=preload("res://assets/models/plasma_scythe.glb")
 const FreeMotion=preload("res://scripts/free_motion.gd")
 const FreeMap=preload("res://scripts/free_map.gd")
 const FreeHUD=preload("res://scripts/free_hud.gd")
@@ -25,6 +28,10 @@ var projectiles: Node3D
 var brains: Dictionary={}
 var enemy_motions: Dictionary={}
 var weapon_frame: CanvasLayer
+var double_rig: Node3D
+var scythe_rig: Node3D
+var swing_age := 99.0
+var wheel_mouse_mode := Input.MOUSE_MODE_VISIBLE
 var shotgun_rig: Node3D
 var pump_sound: AudioStreamPlayer
 var distant_shot: AudioStreamPlayer3D
@@ -56,10 +63,16 @@ func _load_settings() -> void:
 func _load_controller_settings() -> void:
 	super._load_controller_settings()
 	var previous: Dictionary=pad_input.bindings.duplicate()
-	pad_input.bindings=Controller.FREE_DEFAULTS.duplicate()
-	for action in ["jump","reload","pause"]:pad_input.bind(action,int(previous.get(action,Controller.FREE_DEFAULTS[action])))
 	var saved: Dictionary=settings.get_value("controller","bindings",{})
-	if saved.has("lock"):pad_input.bind("lock",int(saved["lock"]))
+	pad_input.bindings=Controller.FREE_DEFAULTS.duplicate()
+	if int(settings.get_value("controller","binding_layout",2))>=3:
+		for action in Controller.FREE_DEFAULTS:
+			if saved.has(action) and int(saved[action]) in [0,1,2,3,6,7,8,9,10]:pad_input.bind(action,int(saved[action]))
+	else:
+		for action in ["jump","reload","pause"]:
+			var button: int=int(previous.get(action,Controller.FREE_DEFAULTS[action]))
+			if button!=JOY_BUTTON_LEFT_SHOULDER:pad_input.bind(action,button)
+		if saved.has("lock"):pad_input.bind("lock",int(saved["lock"]))
 func _make_player() -> void:
 	super._make_player()
 	camera.far=100
@@ -67,6 +80,8 @@ func _make_player() -> void:
 	for child in camera.get_children():
 		if child is OmniLight3D:child.light_energy=.28
 	shotgun_rig=PUMP.instantiate();gun.add_child(shotgun_rig);_layer_weapon(shotgun_rig)
+	double_rig=DOUBLE.instantiate();gun.add_child(double_rig);_layer_weapon(double_rig);double_rig.hide()
+	scythe_rig=SCYTHE.instantiate();gun.add_child(scythe_rig);_layer_weapon(scythe_rig);scythe_rig.hide()
 func _layer_weapon(model: Node3D) -> void:
 	for mesh in model.find_children("*","MeshInstance3D",true,false):mesh.layers=2;mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 func _make_audio() -> void:
@@ -105,7 +120,8 @@ func _setup_round() -> void:
 	corpses.clear();corpse_lives.clear();cloud.clear();projectiles.clear();next_minion=100
 	for p in rules.players:
 		var id: int=p["id"];var stat:=rules.stats(id)
-		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":30 if p["weapon"]=="pump" else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"touch_auto_left":0.0,"reload_cycle":0,"reload_finish":0},true)
+		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":-1 if Inventory.infinite(p["weapon"]) else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"touch_auto_left":0.0,"reload_cycle":0,"reload_finish":0},true)
+		Inventory.reset(p)
 		var lane: int=id if p["team"]==0 else id-selected_size
 		var spawn: int=[10,9,11,19][lane] if p["team"]==0 else [14,13,15,23][lane]
 		var body:=player if id==local_id else _create_entity(id,"fighter",spawn,id)
@@ -118,13 +134,14 @@ func _setup_round() -> void:
 		var item:=art.build_pickup(self,course.nodes[node]+Vector3.UP*.5,kind);item.set_meta("kind",kind);supply_nodes.append(item);supply_timers.append(0.0)
 	if _authority():
 		for i in range(6):_spawn_minion([0,2,4,6,17,21][i],["scavenger","stalker","brute"][i%3])
-	minion_spawn_left=2.5;treasure_spawn_left=combat_random.randf_range(55,125);_equip_viewmodel()
+	minion_spawn_left=2.5;treasure_spawn_left=combat_random.randf_range(27.5,62.5);_equip_viewmodel()
 func _attach_brain(body: CharacterBody3D,key: int,motion: RefCounted) -> void:
 	var brain:=Brain.new();body.add_child(brain);brains[key]=brain;enemy_motions[key]=motion
 func _create_entity(key: int,role: String,node: int,fighter := -1,subtype := "scavenger") -> CharacterBody3D:
 	var body:=super._create_entity(key,role,node,fighter,subtype)
 	body.collision_mask=1;body.floor_snap_length=.4;body.floor_max_angle=deg_to_rad(44)
 	if role=="minion":body.get_node("MuzzleFlash").material_override=art.materials["green"]
+	if role=="fighter":_sync_actor_weapon(body,fighter)
 	if role=="minion" and _authority():
 		var motion:=FreeMotion.new();motion.reset(body,course,node);_attach_brain(body,key,motion)
 	return body
@@ -132,6 +149,7 @@ func _remove_entity(key: int) -> void:
 	brains.erase(key);enemy_motions.erase(key);super._remove_entity(key)
 func _adapt_orientation() -> void:
 	super._adapt_orientation()
+	_close_wheel(false)
 	_set_touch_auto(false)
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.lock_button):hud_ui.lock_button.release()
 	if is_instance_valid(hud_ui) and is_instance_valid(hud_ui.stick) and hud_ui.stick.finger>=0:hud_ui.stick.release()
@@ -139,6 +157,7 @@ func _adapt_orientation() -> void:
 
 func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play":
+		_close_wheel(false)
 		_set_touch_auto(false)
 		mouse_firing=false;mouse_lock=false;touch_lock=false
 		if is_instance_valid(pad_input):pad_input.stop_locking()
@@ -148,12 +167,27 @@ func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play" and rails.has(local_id) and not demo:_request_action("move",Vector2.ZERO)
 	super._show(value,context)
 func _ui_action(kind: String,value: Variant) -> void:
+	if kind=="wheel":
+		if value:_open_wheel()
+		else:_close_wheel(true)
+		return
 	if kind in ["reverse","suction","essence"]:return
 	if kind=="lock":touch_lock=bool(value);_request_action("lock",value);return
 	if kind=="move":
 		touch_move=value;keyboard_used=false;_request_action("move",value)
 	else:super._ui_action(kind,value)
 func _controller_command(kind: String,value: Variant) -> void:
+	if kind=="wheel_cancel":_close_wheel(false);return
+	if kind=="wheel":
+		if value:_open_wheel()
+		else:_close_wheel(true)
+		return
+	if kind=="wheel_aim":
+		if _wheel_open():hud_ui.wheel.point(value)
+		return
+	if kind=="wheel_cycle":
+		if _wheel_open():hud_ui.wheel.cycle(int(value))
+		return
 	if kind in ["reverse","suction","essence"]:return
 	if kind=="lock":
 		if screen=="play" or value==false:_request_action(kind,value)
@@ -164,6 +198,19 @@ func _controller_command(kind: String,value: Variant) -> void:
 		return
 	super._controller_command(kind,value)
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode==KEY_TAB and not event.echo and (screen=="play" or _wheel_open()):
+		if event.pressed:_open_wheel()
+		else:_close_wheel(true)
+		get_viewport().set_input_as_handled();return
+	if screen=="play" and (event is InputEventScreenTouch or event is InputEventScreenDrag):
+		pad_input.set_active(false)
+		if _wheel_open() and event is InputEventScreenDrag:hud_ui.wheel.select_point(event.position)
+		if hud_ui.wheel_button.handle(event):get_viewport().set_input_as_handled();return
+	if _wheel_open() and not (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+		if event is InputEventMouseMotion:hud_ui.wheel.select_point(event.position)
+		if event is InputEventScreenTouch and event.pressed:hud_ui.wheel.select_point(event.position)
+		if event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE:_close_wheel(false)
+		get_viewport().set_input_as_handled();return
 	if event is InputEventMouse or event is InputEventKey:_set_touch_auto(false)
 	var ending_touch: bool=event is InputEventScreenTouch and not event.pressed and event.index==touch_aim
 	if event is InputEventKey and event.keycode==KEY_Q:return
@@ -194,6 +241,9 @@ func _request_action(kind: String,value: Variant=null) -> void:
 func _apply_action(id: int,kind: String,value: Variant,sequence: int) -> void:
 	if not _authority() or id not in humans or not rails.has(id):return
 	if kind in ["reverse","suction","essence"]:return
+	if kind=="equip":
+		if value is String and prelude_left<=0 and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(id):_switch_weapon(id,value)
+		return
 	if kind=="autofire":
 		if value is bool and (not value or (prelude_left<=0 and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(id))):rules.players[id]["touch_auto_left"]=.5 if value else 0.0
 		return
@@ -231,6 +281,7 @@ func _animate_actor(body: CharacterBody3D,motion: RefCounted) -> void:
 	art.animate_enemy(body,"Jump" if airborne else "Run" if moving else "Idle")
 	var muzzle:=maxf(0,float(body.get_meta("muzzle",0))-1.0/60);body.set_meta("muzzle",muzzle)
 	body.get_node("MuzzleFlash").visible=muzzle>0
+	_tick_actor_weapon(body,1.0/60)
 func _respawn_fighter(id: int) -> void:
 	super._respawn_fighter(id)
 	if rails.has(id):rails[id].set_move(Vector2.ZERO)
@@ -241,6 +292,7 @@ func _replace_departed(id: int) -> void:
 	_notify("A disconnected player is now controlled by a bot.",4)
 func _physics_process(delta: float) -> void:
 	if app_paused:return
+	if _wheel_open() and (not _alive(local_id) or rules.phase not in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]):_close_wheel(false)
 	if prelude_left>0 and not demo:
 		prelude_left=maxf(0 if _authority() else .02,prelude_left-delta)
 		if _authority() and prelude_left<=0 and not course.nav_ready:prelude_left=.02
@@ -250,7 +302,7 @@ func _physics_process(delta: float) -> void:
 		if prelude_left<=0:_show("play");phase_wall_time=Time.get_ticks_usec()
 		_render_hud(delta)
 		return
-	if screen=="play" and not demo:
+	if screen=="play" and not demo and not _wheel_open():
 		if touch_auto:
 			if touch_aim<0 or pad_input.active:_set_touch_auto(false)
 			else:
@@ -292,13 +344,14 @@ func _tick_bots(delta: float) -> void:
 		var goal: Vector3=body.get_meta("wander_goal",course.nodes[(key*7)%course.nodes.size()])
 		if is_instance_valid(target):
 			var diff:=target.position-body.position
-			motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-diff.x,-diff.z),deg_to_rad(90 if fighter>=0 else 65)*delta)
+			if fighter>=0:_ai_choose_weapon(fighter,diff.length())
+			motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-diff.x,-diff.z),deg_to_rad(65 if fighter>=0 else 50)*delta)
 			if body.get_meta("subtype","")=="treasure":
 				var farthest: Vector3=course.nodes[0]
 				for node in course.nodes:
 					if node.distance_squared_to(target.position)>farthest.distance_squared_to(target.position):farthest=node
 				goal=farthest
-			elif diff.length()>10 or not _clear_sight(body.position+Vector3.UP*1.3,target.position+Vector3.UP):goal=target.position
+			elif diff.length()>(2.1 if fighter>=0 and Inventory.melee(rules.players[fighter]["weapon"]) else 10.0) or not _clear_sight(body.position+Vector3.UP*1.3,target.position+Vector3.UP):goal=target.position
 			else:
 				var side:=Vector3(-diff.z,0,diff.x).normalized()
 				goal=body.position+side*sin(float(Time.get_ticks_msec())*.001+key)*2.5
@@ -306,7 +359,7 @@ func _tick_bots(delta: float) -> void:
 			if body.position.distance_to(goal)<1.8:goal=course.nodes[combat_random.randi_range(0,24)];body.set_meta("wander_goal",goal)
 
 		var direction: Vector3=brains[key].steer(body,motion,goal,delta)
-		if not is_instance_valid(target) and direction.length()>.2:motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-direction.x,-direction.z),deg_to_rad(90 if fighter>=0 else 65)*delta)
+		if not is_instance_valid(target) and direction.length()>.2:motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-direction.x,-direction.z),deg_to_rad(65 if fighter>=0 else 50)*delta)
 		var local: Vector3=Basis(Vector3.UP,motion.aim_yaw).inverse()*direction
 		motion.set_move(Vector2(local.x,local.z))
 		var speed: float=float(Minions.TYPES[body.get_meta("subtype","scavenger")]["speed"])*MINION_SPEED_MULTIPLIER if fighter<0 else BOT_MOVE_SPEED
@@ -340,7 +393,7 @@ func _ai_target(body: CharacterBody3D) -> CharacterBody3D:
 func _ai_fire(body: CharacterBody3D,target: CharacterBody3D,id: int,_delta: float) -> void:
 	var p: Dictionary=rules.players[id]
 	if p["ammo"]==0 and p["reload"]<=0:_try_reload(id)
-	if not _can_shoot(id) or body.position.distance_to(target.position)>28 or not _clear_sight(body.position+Vector3.UP*1.5,target.position+Vector3.UP):return
+	if not _can_shoot(id) or body.position.distance_to(target.position)>(3.0 if Inventory.melee(p["weapon"]) else 28.0) or not _clear_sight(body.position+Vector3.UP*1.5,target.position+Vector3.UP):return
 	var aim:=target.position+Vector3.UP*(.8 if target.get_meta("role","")=="minion" else 1.4)
 	if not _facing_target(body,aim):return
 	_fire_weapon(id,aim)
@@ -348,7 +401,7 @@ func _minion_fire(body: CharacterBody3D,target: CharacterBody3D,delta: float) ->
 	var definition: Dictionary=Minions.TYPES[body.get_meta("subtype")]
 	var timer:=float(body.get_meta("attack"))-delta;body.set_meta("attack",timer)
 	if timer>0 or definition["damage"]<=0 or body.position.distance_to(target.position)>22 or not _clear_sight(body.position+Vector3.UP*.9,target.position+Vector3.UP):return
-	body.set_meta("attack",definition["interval"]);body.set_meta("muzzle",.12)
+	body.set_meta("attack",definition["interval"]*1.25);body.set_meta("muzzle",.12)
 	var origin: Vector3=body.get_node("MuzzleFlash").global_position
 	if not _facing_target(body,target.position+Vector3.UP*1.2):return
 	var direction:=origin.direction_to(target.position+Vector3.UP*1.2)
@@ -380,9 +433,11 @@ func _tick_auto_combat(delta: float) -> void:
 			if p["deny_id"]!=orb:p["deny_id"]=orb;p["deny_dwell"]=0.0
 			p["deny_dwell"]+=delta
 			if p["deny_dwell"]>=.55 and _can_shoot(id):_fire_weapon(id)
-		elif target is CharacterBody3D and _can_shoot(id):_fire_weapon(id)
+		elif target is CharacterBody3D and _can_shoot(id):
+			if not Inventory.melee(p["weapon"]) or _body(id).position.distance_to(target.position)<=3.0:_fire_weapon(id)
 func _fire_weapon(id: int,aim := Vector3.ZERO) -> void:
 	if not _can_shoot(id):return
+	if Inventory.melee(rules.players[id]["weapon"]):_melee_swing(id);return
 	var body:=_body(id);var data: Dictionary=Rules.WEAPONS[rules.players[id]["weapon"]]
 	var basis:=Basis.from_euler(Vector3(rails[id].pitch,rails[id].aim_yaw,0)) if rails.has(id) else body.global_basis
 	var origin: Vector3=body.get_node("MuzzleFlash").global_position if id!=local_id else camera.global_position
@@ -390,7 +445,7 @@ func _fire_weapon(id: int,aim := Vector3.ZERO) -> void:
 		basis=camera.global_basis
 		var hit:=_target_for(id)
 		aim=hit.get("position",camera.global_position-camera.global_basis.z*38)
-		origin=gun.global_transform*(Vector3(.19,-.157,-1.19) if rules.players[id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))
+		origin=gun.global_transform*_muzzle_offset(rules.players[id]["weapon"])
 		if is_instance_valid(weapon_frame):origin=weapon_frame.muzzle_world(origin)
 		var blocked:=get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(camera.global_position,origin,1))
 		if not blocked.is_empty():origin=blocked["position"]+Vector3(blocked["normal"])*.04
@@ -424,27 +479,36 @@ func _play_distant(pos: Vector3,shotgun: bool) -> void:
 	if distant_shot.stream!=stream:distant_shot.stream=stream
 	distant_shot.global_position=pos;distant_shot.play()
 func _spend_shot(id: int) -> void:
+	var melee: bool=Inventory.melee(rules.players[id]["weapon"])
 	super._spend_shot(id)
-	if id==local_id:pump_age=0;pump_sound_played=false
-	if rules.players[id]["ammo"]==0 and rules.players[id]["reserve"]>0:_try_reload(id)
+	if not rules.players[id]["human"]:rules.players[id]["fire_cd"]*=1.30
+	if melee:rules.players[id]["ammo"]=1;_body(id).set_meta("muzzle",0.0)
+	if id==local_id:
+		pump_age=0;pump_sound_played=false
+		if melee:swing_age=0;flash_left=0
+	Inventory.store(rules.players[id])
+	if rules.players[id]["ammo"]==0 and (rules.players[id]["reserve"]>0 or Inventory.infinite(rules.players[id]["weapon"])):_try_reload(id)
 func _equip_viewmodel() -> void:
 	if rules.players.is_empty() or not is_instance_valid(shotgun_rig):return
-	var pump: bool=rules.players[local_id]["weapon"]=="pump"
-	gun.get_node("DetailedSidearm").visible=not pump
+	var key: String=rules.players[local_id]["weapon"]
+	var pump: bool=key=="pump"
+	double_rig.visible=key=="double";scythe_rig.visible=key=="scythe"
+	if key=="scythe":_tint_scythe(scythe_rig,int(rules.players[local_id]["team"]))
+	gun.get_node("DetailedSidearm").visible=key in ["pulse","needle","scatter"]
 	shotgun_rig.get_node("Shotgun").visible=pump;shotgun_rig.get_node("PumpSlide").visible=pump
-	shotgun_rig.get_node("SupportArm").visible=pump and hand_amount<.2
+	shotgun_rig.get_node("SupportArm").visible=key in ["pump","double"]
 	shotgun_rig.get_node("GripArm").show()
 	if not pump:
 		for mesh in gun.get_node("DetailedSidearm").find_children("*","MeshInstance3D",true,false):
 			var material: Material=mesh.get_active_material(0)
 			if material is StandardMaterial3D and ("Glove" in material.resource_name or "sleeve" in material.resource_name):mesh.hide()
-	var desired_shot: AudioStream=load("res://assets/audio/shotgun_shot.wav") if pump else normal_shot
+	var desired_shot: AudioStream=load("res://assets/audio/scythe_swing.wav") if key=="scythe" else load("res://assets/audio/shotgun_shot.wav") if key in ["pump","double"] else normal_shot
 	if shot_sound.stream!=desired_shot:shot_sound.stream=desired_shot
-	var desired_load: AudioStream=load("res://assets/audio/shotgun_load.wav") if pump else load("res://assets/audio/reload_lower.wav")
+	var desired_load: AudioStream=load("res://assets/audio/shotgun_load.wav") if key in ["pump","double"] else load("res://assets/audio/reload_lower.wav")
 	if reload_lower_sound.stream!=desired_load:reload_lower_sound.stream=desired_load
-	var desired_ready: AudioStream=load("res://assets/audio/shotgun_ready.wav") if pump else load("res://assets/audio/reload_raise.wav")
+	var desired_ready: AudioStream=load("res://assets/audio/shotgun_ready.wav") if key in ["pump","double"] else load("res://assets/audio/reload_raise.wav")
 	if reload_raise_sound.stream!=desired_ready:reload_raise_sound.stream=desired_ready
-	_set_weapon_audio_levels(pump)
+	_set_weapon_audio_levels(key in ["pump","double"])
 func _tick_viewmodel(delta: float) -> void:
 	super._tick_viewmodel(delta)
 	gun.scale=Vector3.ONE*.88
@@ -455,7 +519,12 @@ func _tick_viewmodel(delta: float) -> void:
 	hand_amount=0;hand_root.hide()
 	if is_instance_valid(weapon_frame):weapon_frame.sync()
 	pump_age+=delta
-	flash.global_position=gun.global_transform*(Vector3(.19,-.157,-1.20) if rules.players[local_id]["weapon"]=="pump" else Vector3(.15,-.187,-.76))
+	flash.global_position=gun.global_transform*_muzzle_offset(rules.players[local_id]["weapon"])
+	swing_age+=delta;gun.rotation.y=0
+	if Inventory.melee(rules.players[local_id]["weapon"]):
+		flash.hide()
+		var amount:=sin(clampf(swing_age/.45,0,1)*PI)
+		gun.rotation.z-=amount*.45;gun.rotation.y=amount*.65
 	if rules.players[local_id]["weapon"]=="pump":
 		var offset:=sin(clampf((pump_age-.18)/.32,0,1)*PI)*.11 if pump_age<.50 else 0.0
 		shotgun_rig.get_node("PumpSlide").position.z=offset
@@ -468,7 +537,7 @@ func _set_weapon_audio_levels(pump: bool) -> void:
 
 func _update_audio() -> void:
 	super._update_audio()
-	if not rules.players.is_empty():_set_weapon_audio_levels(rules.players[local_id]["weapon"]=="pump")
+	if not rules.players.is_empty():_set_weapon_audio_levels(rules.players[local_id]["weapon"] in ["pump","double"])
 	if is_instance_valid(pump_sound):pump_sound.volume_db=-80 if sound_volume==0 else -13+linear_to_db(sound_volume*SHOT_VOLUME_SCALE);pump_sound.stream_paused=app_paused or (not demo and not net.in_match and screen!="play")
 	if is_instance_valid(distant_shot):distant_shot.volume_db=-80 if sound_volume==0 else -20+linear_to_db(sound_volume*SHOT_VOLUME_SCALE)
 func _demo_tick(delta: float) -> void:
@@ -497,9 +566,11 @@ func _render_hud(delta: float) -> void:
 	var gold: bool=essence and cloud.orbs.get(int(hit["collider"].get_meta("orb",-1)),{}).get("gold",false)
 	var key: String=pad_input.button_name(pad_input.bindings["reload"]) if pad_input.active else "TAP"
 	var hint: String=(key+" IN AMBER" if not p["reload_used"] else "RELOADING") if p["reload"]>0 else (("FIND AMMO") if p["ammo"]==0 else "GOLD / AUTO COLLECTION" if gold else "BLUE ESSENCE / AUTO COLLECTION" if essence else "")
+	var lock_state: Dictionary=lock_states.get(local_id,{})
+	if float(lock_state.get("ttl",0))>0 and lock_state.get("chosen",false) and not _valid_lock(local_id,_lock_body(int(lock_state.get("target",-1))),true) and p["reload"]<=0:hint="TARGET LOST / RELEASE LOCK"
 	var notice: String=toast if toast_left>0 else ""
 	if not _alive(local_id):notice="RESPAWN / %.0f" % ceilf(p["respawn"]) if p["lives"]>0 else "ELIMINATED / WATCHING THE ROUND"
-	hud_ui.update_view({"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"notice":notice,"lock_progress":_lock_progress(local_id),"lock_active":float(lock_states.get(local_id,{}).get("ttl",0))>0,"lock_rect":_lock_rect(),"route_hint":"%s / %s" % [conditions.get("time",""),conditions.get("weather","")],"routes":{},"queued":"","can_drop":false,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":not hit.is_empty() and hit["collider"] is CharacterBody3D,"essence_target":essence,"essence_gold":gold,"reload_hint":hint,"reload_progress":1.0-p["reload"]/maxf(.1,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names(),"conditions":conditions,"prelude":prelude_left},delta)
+	hud_ui.update_view({"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"infinite_ammo":Inventory.infinite(p["weapon"]),"melee":Inventory.melee(p["weapon"]),"notice":notice,"lock_progress":_lock_progress(local_id),"lock_active":float(lock_states.get(local_id,{}).get("ttl",0))>0,"lock_rect":_lock_rect(),"route_hint":"%s / %s" % [conditions.get("time",""),conditions.get("weather","")],"routes":{},"queued":"","can_drop":false,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":not hit.is_empty() and hit["collider"] is CharacterBody3D,"essence_target":essence,"essence_gold":gold,"reload_hint":hint,"reload_progress":1.0-p["reload"]/maxf(.1,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names(),"conditions":conditions,"prelude":prelude_left},delta)
 	if screen=="shop":
 		var signature:=str([p["souls"],p["weapon"],p["upgrades"],p["ready"]])
 		if signature!=shop_signature:_show_shop()
@@ -512,12 +583,14 @@ func _apply_snapshot(packet: Dictionary) -> void:
 	if conditions!=packet["conditions"]:conditions=packet["conditions"];weather_node.apply(conditions,environment,sun,camera)
 	super._apply_snapshot(packet)
 	projectiles.apply_snapshot(packet["projectiles"])
+	for body in entities.values():
+		if int(body.get_meta("fighter",-1))>=0:_sync_actor_weapon(body,int(body.get_meta("fighter")))
 	lock_states=packet.get("locks",{}).duplicate(true)
 	if prelude_left>0 and screen!="conditions":_show("conditions",{"conditions":conditions})
 	elif prelude_left<=0 and screen=="conditions":_show("play")
 	for shooter in packet["shots"]:
-		if shooter==local_id:pump_age=0;pump_sound_played=false
-		elif is_instance_valid(_body(int(shooter))):_play_distant(_body(int(shooter)).position,int(shooter)<rules.players.size() and rules.players[int(shooter)]["weapon"]=="pump")
+		if shooter==local_id:pump_age=0;pump_sound_played=false;swing_age=0
+		elif is_instance_valid(_body(int(shooter))):_play_actor_shot(int(shooter))
 func _client_tick(delta: float) -> void:
 	rules.remaining=maxf(0,rules.remaining-delta)
 	if rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(local_id):
@@ -525,6 +598,7 @@ func _client_tick(delta: float) -> void:
 	aim_send_left-=delta
 	if aim_send_left<=0:net.send_action("aim",Vector2(rails[local_id].aim_yaw,rails[local_id].pitch));aim_send_left=.05
 	for body in entities.values():
+		_tick_actor_weapon(body,delta)
 		if body.has_meta("network_pos"):
 			body.position=body.position.lerp(body.get_meta("network_pos"),minf(1,delta*18));body.rotation.y=lerp_angle(body.rotation.y,float(body.get_meta("network_yaw")),minf(1,delta*18))
 		if body.has_meta("animation"):body.get_meta("animation").active=body.visible and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]
@@ -546,9 +620,10 @@ func _facing_target(body: CharacterBody3D,point: Vector3) -> bool:
 	var diff:=point-body.position;diff.y=0
 	return diff.length()<.1 or (-body.global_basis.z).normalized().dot(diff.normalized())>cos(deg_to_rad(9))
 func _set_lock_input(id: int,pressed: bool) -> void:
-	if not lock_states.has(id):lock_states[id]={"ttl":0.0,"target":-1,"charge":0.0}
+	if not lock_states.has(id):lock_states[id]={"ttl":0.0,"target":-1,"charge":0.0,"chosen":false}
+	if pressed and float(lock_states[id]["ttl"])<=0:lock_states[id]["target"]=-1;lock_states[id]["charge"]=0.0;lock_states[id]["chosen"]=false
 	lock_states[id]["ttl"]=.5 if pressed else 0.0
-	if not pressed:lock_states[id]["target"]=-1;lock_states[id]["charge"]=0.0
+	if not pressed:lock_states[id]["target"]=-1;lock_states[id]["charge"]=0.0;lock_states[id]["chosen"]=false
 func _lock_body(key: int) -> CharacterBody3D:
 	if key<0:return null
 	return player if key==local_id else entities.get(key)
@@ -570,9 +645,10 @@ func _tick_locks(delta: float) -> void:
 		if not _authority() and id!=local_id:continue
 		var state: Dictionary=lock_states[id]
 		state["ttl"]=maxf(0,float(state["ttl"])-delta)
-		if state["ttl"]<=0 or not _alive(id):state["target"]=-1;state["charge"]=0.0;continue
+		if state["ttl"]<=0 or not _alive(id):state["target"]=-1;state["charge"]=0.0;state["chosen"]=false;continue
 		var target:=_lock_body(int(state["target"]))
-		if not _valid_lock(id,target,true):
+		if state.get("chosen",false) and not _valid_lock(id,target,true):state["charge"]=0.0;continue
+		if not state.get("chosen",false):
 			state["target"]=-1;state["charge"]=0.0;target=null
 			var best:=INF
 			for candidate in entities.values()+[player]:
@@ -581,7 +657,7 @@ func _tick_locks(delta: float) -> void:
 				var m=rails[id];var forward: Vector3=-Basis.from_euler(Vector3(m.pitch,m.aim_yaw,0)).z
 				var score:=1.0-forward.dot(offset.normalized())
 				if score<best:best=score;target=candidate
-			if is_instance_valid(target):state["target"]=local_id if target==player else int(target.get_meta("key"))
+			if is_instance_valid(target):state["target"]=local_id if target==player else int(target.get_meta("key"));state["chosen"]=true
 		if not is_instance_valid(target):continue
 		state["charge"]=minf(LOCK_TIME,float(state["charge"])+delta)
 		var m=rails[id];var diff:=_lock_point(target)-(_body(id).position+Vector3.UP*1.65)
@@ -590,6 +666,7 @@ func _tick_locks(delta: float) -> void:
 		_body(id).rotation.y=m.aim_yaw
 		if id==local_id:camera.rotation=Vector3(m.pitch,0,0)
 func _can_shoot(id: int) -> bool:
+	if id==local_id and _wheel_open():return false
 	if not super._can_shoot(id):return false
 	var state: Dictionary=lock_states.get(id,{})
 	if float(state.get("ttl",0))<=0:return true
@@ -599,7 +676,7 @@ func _lock_rect() -> Rect2:
 	var state: Dictionary=lock_states.get(local_id,{})
 	if float(state.get("ttl",0))<=0:return Rect2()
 	var target:=_lock_body(int(state.get("target",-1)))
-	if not is_instance_valid(target) or camera.is_position_behind(target.position+Vector3.UP):return Rect2()
+	if not _valid_lock(local_id,target,true) or camera.is_position_behind(target.position+Vector3.UP):return Rect2()
 	var height:=1.8 if target.get_meta("role","")=="minion" else 2.4
 	var a:=camera.unproject_position(target.position+Vector3.UP*height)
 	var b:=camera.unproject_position(target.position)
@@ -610,7 +687,8 @@ func _tick_fighter_states(delta: float) -> void:
 	for p in rules.players:
 		p["touch_auto_left"]=maxf(0,float(p.get("touch_auto_left",0))-delta)
 		p["suction"]=0.0
-		if _alive(p["id"]) and p["ammo"]==0 and p["reserve"]>0 and p["reload"]<=0:_try_reload(p["id"])
+		Inventory.store(p)
+		if _alive(p["id"]) and p["ammo"]==0 and (p["reserve"]>0 or Inventory.infinite(p["weapon"])) and p["reload"]<=0:_try_reload(p["id"])
 
 func _set_touch_auto(enabled: bool) -> void:
 	if enabled==touch_auto:return
@@ -640,3 +718,137 @@ func _damage_entity(body: CharacterBody3D,amount: float,attacker: int) -> void:
 		if id>=0:cloud.orbs[id]["owner"]=attacker;cloud.orbs[id]["area"].collision_layer=0
 		else:rules.credit_essence(attacker,int(drop["value"]))
 	_remove_entity(int(body.get_meta("key")))
+
+func _wheel_open() -> bool:
+	return is_instance_valid(hud_ui) and is_instance_valid(hud_ui.wheel) and hud_ui.wheel.opened
+func _open_wheel() -> void:
+	if screen!="play" or demo or not _alive(local_id) or _wheel_open():return
+	mouse_firing=false;mouse_lock=false;touch_lock=false;keyboard_used=false;touch_move=Vector2.ZERO;touch_aim=-1
+	_set_touch_auto(false);_request_action("fire",false);_request_action("lock",false);_request_action("move",Vector2.ZERO)
+	Inventory.store(rules.players[local_id]);hud_ui.wheel.present(rules.players[local_id]);pad_input.wheel_open=true
+	wheel_mouse_mode=Input.mouse_mode;Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
+func _close_wheel(commit: bool) -> void:
+	if not _wheel_open():return
+	var key: String=hud_ui.wheel.selected
+	hud_ui.wheel.close();pad_input.wheel_open=false
+	hud_ui.wheel_button.finger=-1;hud_ui.wheel_button.queue_redraw()
+	if not pad_input.active:Input.mouse_mode=wheel_mouse_mode
+	if commit and screen=="play":_request_action("equip",key)
+func _switch_weapon(id: int,key: String) -> bool:
+	var p: Dictionary=rules.players[id]
+	if not Rules.WEAPONS.has(key) or key not in p["owned"]:return false
+	if p["weapon"]==key:return true
+	Inventory.store(p);Inventory.restore(p,key)
+	p["reload"]=0.0;p["reload_total"]=rules.stats(id)["reload"];p["reload_used"]=false;p["fire_cd"]=maxf(float(p["fire_cd"]),.18)
+	if id==local_id:
+		reload_lower_sound.stop();reload_raise_sound.stop();pump_age=99;pump_sound_played=true;swing_age=99;recoil=0;gun.rotation=Vector3.ZERO
+		_equip_viewmodel()
+	else:_sync_actor_weapon(_body(id),id)
+	return true
+func _try_reload(id: int,partial := false) -> void:
+	var p: Dictionary=rules.players[id]
+	if Inventory.melee(p["weapon"]):return
+	if Inventory.infinite(p["weapon"]):
+		p["reserve"]=99999;super._try_reload(id,partial);p["reserve"]=-1
+	else:super._try_reload(id,partial)
+	Inventory.store(p)
+func _complete_reload(id: int) -> void:
+	var p: Dictionary=rules.players[id]
+	if Inventory.infinite(p["weapon"]):
+		var early: bool=p["reload"]>0
+		p["ammo"]=int(rules.stats(id)["mag"]);p["reserve"]=-1;p["reload"]=0.0;p["reload_finish"]+=1
+		if early:p["fire_cd"]=maxf(float(p["fire_cd"]),.14)
+	else:super._complete_reload(id)
+	Inventory.store(p)
+func _purchase(id: int,item: String) -> void:
+	var p: Dictionary=rules.players[id]
+	if Rules.WEAPONS.has(item):
+		Inventory.store(p)
+		if not rules.buy(id,item):_notify("ARMORY / PURCHASE UNAVAILABLE",2,id);return
+		Inventory.restore(p,item);p["reload"]=0.0;p["reload_total"]=rules.stats(id)["reload"]
+		_notify("ARMORY / WEAPON ACQUIRED",2,id)
+		if id==local_id:_equip_viewmodel()
+		else:_sync_actor_weapon(_body(id),id)
+	elif item=="ammo":
+		var available:=false
+		for key in p["owned"]:
+			if not Inventory.infinite(key) and int(p["inventory"][key]["reserve"])<360:available=true
+		if not available or not rules.buy(id,item):_notify("NO RESUPPLY NEEDED",2,id);return
+		Inventory.add_reserve(p,72);_notify("ARMORY / RESUPPLIED",2,id)
+	else:super._purchase(id,item)
+func _tick_supplies(delta: float) -> void:
+	for i in range(supply_nodes.size()):
+		var node: Node3D=supply_nodes[i]
+		if supply_timers[i]>0:
+			supply_timers[i]=maxf(0,supply_timers[i]-delta);node.visible=supply_timers[i]<=0;continue
+		node.rotate_y(delta)
+		for p in rules.players:
+			var id: int=p["id"];var body:=_body(id)
+			if not _alive(id) or not is_instance_valid(body) or body.position.distance_to(node.position-Vector3.UP*.5)>1.2:continue
+			if node.get_meta("kind")=="health":
+				if p["hp"]>=rules.stats(id)["health"]:continue
+				p["hp"]=minf(rules.stats(id)["health"],p["hp"]+30)
+			elif not Inventory.add_reserve(p,24):continue
+			supply_timers[i]=15.0;node.hide();break
+func _muzzle_offset(key: String) -> Vector3:
+	return Vector3(.19,-.157,-.99) if key=="double" else Vector3(.19,-.157,-1.19) if key=="pump" else Vector3(.15,-.187,-.76)
+func _melee_swing(id: int) -> void:
+	_spend_shot(id)
+	var body:=_body(id);var origin:=body.position+Vector3.UP*1.25
+	var basis:=Basis.from_euler(Vector3(rails[id].pitch,rails[id].aim_yaw,0)) if rails.has(id) else body.global_basis
+	for target in entities.values()+[player]:
+		if target==body or not is_instance_valid(target) or target.is_queued_for_deletion():continue
+		var other: int=local_id if target==player else int(target.get_meta("fighter",-1))
+		var valid: bool=rules.can_harm(id,other) if other>=0 else target.get_meta("role","")=="minion" and rules.phase==Rules.Phase.COLLECTION
+		if not valid:continue
+		var point: Vector3=target.position+Vector3.UP*1.1;var diff: Vector3=point-origin
+		if diff.length()>3 or (-basis.z).dot(diff.normalized())<cos(deg_to_rad(50)) or not _clear_sight(origin,point):continue
+		if other>=0:_damage_fighter(other,float(rules.stats(id)["damage"]),id)
+		else:_damage_entity(target,float(rules.stats(id)["damage"]),id)
+	if id!=local_id:_play_melee_audio(body.position);body.set_meta("scythe_swing",.4)
+func _play_melee_audio(position: Vector3) -> void:
+	if not is_instance_valid(distant_shot):return
+	distant_shot.stream=load("res://assets/audio/scythe_swing.wav");distant_shot.global_position=position;distant_shot.play()
+func _play_actor_shot(key: int) -> void:
+	var body:=_body(key)
+	if not is_instance_valid(body):return
+	if key>=0 and key<rules.players.size() and Inventory.melee(rules.players[key]["weapon"]):
+		_play_melee_audio(body.position);body.set_meta("scythe_swing",.4)
+	else:_play_distant(body.position,key>=0 and key<rules.players.size() and rules.players[key]["weapon"] in ["pump","double"])
+func _tint_scythe(model: Node3D,team: int) -> void:
+	if int(model.get_meta("plasma_team",-1))==team:return
+	model.set_meta("plasma_team",team)
+	var color:=Color("5bbdff") if team==0 else Color("ff5269")
+	for mesh in model.find_children("*","MeshInstance3D",true,false):
+		for surface in range(mesh.mesh.get_surface_count()):
+			var material: Material=mesh.get_active_material(surface)
+			if material is StandardMaterial3D and "Plasma" in material.resource_name:
+				var copy: StandardMaterial3D=material.duplicate();copy.albedo_color=color;copy.emission=color;copy.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+				mesh.set_surface_override_material(surface,copy)
+func _sync_actor_weapon(body: CharacterBody3D,id: int) -> void:
+	if not is_instance_valid(body) or id==local_id:return
+	var key: String=rules.players[id]["weapon"]
+	if body.get_meta("shown_weapon","")==key:return
+	body.set_meta("shown_weapon",key)
+	for name in ["Armory_scythe","Armory_double"]:
+		var previous:=body.get_node_or_null(name)
+		if is_instance_valid(previous):previous.hide()
+	if key not in ["scythe","double"]:return
+	var model:=body.get_node_or_null("Armory_"+key)
+	if not is_instance_valid(model):
+		model=SCYTHE.instantiate() if key=="scythe" else DOUBLE.instantiate();model.name="Armory_"+key;body.add_child(model)
+		model.position=Vector3(.12,1.28,.15);model.scale=Vector3.ONE*1.15
+	if key=="scythe":_tint_scythe(model,int(rules.players[id]["team"]))
+	model.show()
+func _tick_actor_weapon(body: CharacterBody3D,delta: float) -> void:
+	var remaining:=maxf(0,float(body.get_meta("scythe_swing",0))-delta);body.set_meta("scythe_swing",remaining)
+	var model:=body.get_node_or_null("Armory_scythe")
+	if is_instance_valid(model):model.rotation.z=-sin(remaining/.4*PI)*.6
+
+func _ai_choose_weapon(id: int,distance: float) -> void:
+	var p: Dictionary=rules.players[id]
+	if distance<2.5 and "scythe" in p["owned"]:_switch_weapon(id,"scythe")
+	elif Inventory.melee(p["weapon"]) and distance>3.5:
+		for key in ["double","needle","pulse","scatter","pump"]:
+			if key in p["owned"]:_switch_weapon(id,key);break
+	elif p["ammo"]==0 and p["reserve"]==0:_switch_weapon(id,"pump")
