@@ -77,6 +77,6 @@ func _process(_delta: float) -> bool:
    assert(g.player.position.distance_to(initial)>1,"Client predicts genuine free movement")
    assert(Vector2(g.player.velocity.x,g.player.velocity.z).length()<.1,"Releasing movement stops the client")
    assert(g.rules.players[4]["weapon"]=="needle" and g.rules.players[4]["souls"]==60,"Shop remains authoritative")
-   print("PASS: LAN free client: ",packets," snapshots, portrait/landscape, shared weather RNG, free move/stop, visible pellets, economy and three-round phases")
+   print("PASS: LAN free client: ",packets," snapshots, portrait/landscape, shared weather RNG, free move/stop, visible pellets, economy and single-match phases")
    g.net.close();g._quit_game()
  return false

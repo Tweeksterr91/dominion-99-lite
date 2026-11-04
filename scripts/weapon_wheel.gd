@@ -35,7 +35,7 @@ func _draw() -> void:
   var edge:=Vector2.from_angle(angle-step*.5)
   draw_line(center+edge*48,center+edge*(radius-9),Color(color,.4),1,true)
   var label:=center+Vector2.from_angle(angle)*(radius*.68)
-  var name: String={"pump":"PUMP","scythe":"SCYTHE","double":"DOUBLE","pulse":"PULSE","needle":"NEEDLE","scatter":"SCATTER"}[key]
+  var name: String={"pump":"PUMP","scythe":"SCYTHE","double":"DOUBLE","pulse":"PULSE","needle":"CARBON","scatter":"SCATTER","sniper":"SNIPER"}[key]
   text_center(name,label,18,color)
   var ammo: Dictionary=profile.get("inventory",{}).get(key,{})
   var info: String="∞" if RULES.WEAPONS[key].get("infinite",false) else "%d / %d" % [ammo.get("ammo",0),ammo.get("reserve",0)]

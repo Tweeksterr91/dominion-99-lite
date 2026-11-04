@@ -84,3 +84,9 @@ Minion variants continue to use the adapted Sinbad creature by Zi Ye under **CC 
 `assets/models/double_barrel.glb` and `plasma_scythe.glb` are original MIT-licensed models built by `art_sources/build_armory.py`, reusing the project's original PBR steel/walnut materials. The double barrel, forged crescent/plasma edge, staff, team-color handling and radial weapon-wheel graphics are original project content. Generated embedded PNGs beside these GLBs are copies of the original project maps and use the same MIT license.
 
 `assets/audio/scythe_swing.wav` is original MIT-licensed synthesis using filtered noise, a swept oscillator and an amplitude envelope; no external recordings/samples are used. Its reproducible builder is `art_sources/build_scythe_audio.py`.
+
+## Boroughs and Careers (v0.12.0)
+
+The Carbon Carbine and Warden Sniper GLBs and extracted material PNGs are original MIT project content, built by `art_sources/build_military_rifles.py` using the original steel PBR maps. Their new shot effects are original sample-free synthesis from `art_sources/build_military_audio.py`.
+
+The procedural Art Deco city sky, stepped skyline buildings, structural foundations, vines and foliage, directional damage UI, hero emblems, names and career chapter text are original MIT project content. The 24 profiles currently share the existing Sentinel combat model; the roster is not a collection of 24 finished character meshes.

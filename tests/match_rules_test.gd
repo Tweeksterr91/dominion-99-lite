@@ -27,13 +27,10 @@ func _initialize() -> void:
  check(r.can_harm(0,4) and not r.can_harm(0,1),"Hunt has enemies and protects teammates")
  for victim in range(4,8):
   for life in range(5):r.lose_life(victim,0)
- check(r.round_index==2 and r.phase==Rules.Phase.COLLECTION,"Eliminated team ends hunt")
- check(r.players[0]["frags"]==20 and r.players[4]["lives"]==5,"Final frag counts and lives reset")
- check(r.players[0]["souls"]==120 and r.players[0]["weapon"]=="needle","Wallet/equipment persist between rounds")
- for round_number in range(2,4):
-  r.tick(82.5+30+3+82.5)
- check(r.phase==Rules.Phase.RESULTS and r.round_index==3,"Exactly three rounds")
+ check(r.round_index==1 and r.phase==Rules.Phase.RESULTS,"The first completed hunt ends the match")
+ check(r.players[0]["frags"]==20 and r.players[4]["lives"]==0,"Final frags count without another-round reset")
+ check(Rules.ROUND_COUNT==1,"Exactly one round is the match")
  r.tick(9999)
  check(r.phase==Rules.Phase.RESULTS,"Results is stable")
- print("FAIL" if failed else "PASS: phase lengths, three rounds, reset lives, teams, economy, shared rolls")
+ print("FAIL" if failed else "PASS: phase lengths, one match, reset lives, teams, economy, shared rolls")
  quit(1 if failed else 0)

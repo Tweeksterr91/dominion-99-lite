@@ -361,7 +361,7 @@ func show_screen(value: String,context: Dictionary) -> void:
 		return
 	if value == "main":
 		_logo(0.12,false)
-		_menu_line("SINGLE PLAYER CAMPAIGN",0.47,"campaign")
+		_menu_line("HEROES / CAMPAIGNS",0.47,"campaign")
 		_menu_line("MULTIPLAYER",0.56,"multiplayer")
 		_menu_line("OPTIONS",0.65,"options")
 		_menu_line("QUIT GAME",0.74,"quit")
@@ -586,7 +586,7 @@ func _landscape_screen(value: String,context: Dictionary) -> void:
 			if child is Label:
 				child.anchor_left=.26;child.anchor_right=.26
 				if child.text=="DOMINION":child.offset_left=-230;child.offset_right=230
-		for i in range(4):_wide_button(["SINGLE PLAYER CAMPAIGN","MULTIPLAYER","OPTIONS","QUIT GAME"][i],.74,135+i*60,column,["campaign","multiplayer","options","quit"][i])
+		for i in range(4):_wide_button(["HEROES / CAMPAIGNS","MULTIPLAYER","OPTIONS","QUIT GAME"][i],.74,135+i*60,column,["campaign","multiplayer","options","quit"][i])
 		_footer("ART CREDITS","credits")
 		return
 	var title: String={"campaign":"CAMPAIGN","multiplayer":"MULTIPLAYER","format":"LAN / DIRECT IP","join":"JOIN ROOM","lobby":"LAN ROOM","options":"OPTIONS","paused":"PAUSED","shop":"THE ARMORY","reveal":"FATE ENGINE","results":"MATCH COMPLETE","credits":"ART CREDITS"}.get(value,"DOMINION '99")

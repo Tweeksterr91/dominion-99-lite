@@ -1,4 +1,7 @@
 extends "res://scripts/souls_arena.gd"
+const HEROES=preload("res://scripts/hero_catalog.gd")
+const CARBON=preload("res://assets/models/carbon_carbine.glb")
+const SNIPER=preload("res://assets/models/warden_sniper.glb")
 const Inventory=preload("res://scripts/weapon_inventory.gd")
 const DOUBLE=preload("res://assets/models/double_barrel.glb")
 const SCYTHE=preload("res://assets/models/plasma_scythe.glb")
@@ -28,6 +31,17 @@ var projectiles: Node3D
 var brains: Dictionary={}
 var enemy_motions: Dictionary={}
 var weapon_frame: CanvasLayer
+var hero_id := "rook"
+var hero_careers: Dictionary={}
+var hero_page := 0
+var hero_mission := 0
+var hero_match_id := "rook"
+var career_recorded := false
+var career_passed := false
+var spawns_synced := false
+var pending_hit_directions: Dictionary={}
+var carbon_rig: Node3D
+var sniper_rig: Node3D
 var double_rig: Node3D
 var scythe_rig: Node3D
 var swing_age := 99.0
@@ -56,6 +70,15 @@ func _ready() -> void:
 func _create_hud() -> CanvasLayer:return FreeHUD.new()
 func _load_settings() -> void:
 	super._load_settings()
+	hero_id=str(settings.get_value("heroes","selected","rook"))
+	if HEROES.find(hero_id)["id"]!=hero_id:hero_id="rook"
+	hero_careers=settings.get_value("heroes","careers",{})
+	for hero in HEROES.roster():
+		if not hero_careers.has(hero["id"]):hero_careers[hero["id"]]=HEROES.empty_career()
+	if not settings.has_section_key("heroes","careers"):
+		hero_careers["rook"]["unlocked"]=campaign_unlocked
+		hero_careers["rook"]["cleared"]=range(maxi(0,campaign_unlocked-1))
+	campaign_unlocked=int(hero_careers[hero_id]["unlocked"]);hero_page=int(HEROES.find(hero_id)["index"])/8
 	if int(settings.get_value("audio","arena_mix",0))<1:
 		if is_equal_approx(sound_volume,.8):sound_volume=.7
 		if is_equal_approx(music_volume,.35):music_volume=.7
@@ -75,21 +98,24 @@ func _load_controller_settings() -> void:
 		if saved.has("lock"):pad_input.bind("lock",int(saved["lock"]))
 func _make_player() -> void:
 	super._make_player()
-	camera.far=100
+	camera.far=270
 	flash.layers=2
 	for child in camera.get_children():
 		if child is OmniLight3D:child.light_energy=.28
 	shotgun_rig=PUMP.instantiate();gun.add_child(shotgun_rig);_layer_weapon(shotgun_rig)
 	double_rig=DOUBLE.instantiate();gun.add_child(double_rig);_layer_weapon(double_rig);double_rig.hide()
 	scythe_rig=SCYTHE.instantiate();gun.add_child(scythe_rig);_layer_weapon(scythe_rig);scythe_rig.hide()
+	carbon_rig=CARBON.instantiate();gun.add_child(carbon_rig);_layer_weapon(carbon_rig);carbon_rig.hide()
+	sniper_rig=SNIPER.instantiate();gun.add_child(sniper_rig);_layer_weapon(sniper_rig);sniper_rig.hide()
 func _layer_weapon(model: Node3D) -> void:
 	for mesh in model.find_children("*","MeshInstance3D",true,false):mesh.layers=2;mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 func _make_audio() -> void:
 	super._make_audio();normal_shot=shot_sound.stream
 func _start_match(size: int,map_id: int,seed_value: int,human_ids: Array,lan := false,attract := false) -> void:
-	match_seed=seed_value;conditions=Weather.roll(seed_value,map_id);prelude_left=0
+	match_seed=seed_value;conditions=Weather.roll(seed_value,map_id);prelude_left=0;spawns_synced=false;career_recorded=false
 	super._start_match(size,map_id,seed_value,human_ids,lan,attract)
 	pad_input.free_movement=true
+	if not lan and not attract:rules.players[0]["name"]=HEROES.find(hero_id)["name"]
 	if not attract:
 		prelude_left=6
 		_show("conditions",{"conditions":conditions})
@@ -120,10 +146,10 @@ func _setup_round() -> void:
 	corpses.clear();corpse_lives.clear();cloud.clear();projectiles.clear();next_minion=100
 	for p in rules.players:
 		var id: int=p["id"];var stat:=rules.stats(id)
-		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":-1 if Inventory.infinite(p["weapon"]) else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"manual_left":0.0,"touch_auto_left":0.0,"reload_cycle":0,"reload_finish":0},true)
+		p.merge({"hp":float(stat["health"]),"shield":float(stat["shield"]),"ammo":int(stat["mag"]),"reserve":-1 if Inventory.infinite(p["weapon"]) else 72,"reload":0.0,"reload_total":float(stat["reload"]),"reload_used":false,"reload_flash":0.0,"fire_cd":0.0,"hit_age":10.0,"respawn":0.0,"invul":2.0,"suction":0.0,"deny_id":-1,"deny_dwell":0.0,"ai_pull":0.0,"shop_done":false,"damage_flash":0.0,"damage_edges":Vector4.ZERO,"manual_left":0.0,"touch_auto_left":0.0,"reload_cycle":0,"reload_finish":0},true)
 		Inventory.reset(p)
 		var lane: int=id if p["team"]==0 else id-selected_size
-		var spawn: int=[10,9,11,19][lane] if p["team"]==0 else [14,13,15,23][lane]
+		var spawn: int=_choose_spawn_node()
 		var body:=player if id==local_id else _create_entity(id,"fighter",spawn,id)
 		var motion:=FreeMotion.new();motion.reset(body,course,spawn);rails[id]=motion
 		body.collision_layer=_fighter_layer(id);body.collision_mask=1
@@ -167,6 +193,16 @@ func _show(value: String,context: Dictionary={}) -> void:
 	if value!="play" and rails.has(local_id) and not demo:_request_action("move",Vector2.ZERO)
 	super._show(value,context)
 func _ui_action(kind: String,value: Variant) -> void:
+	if kind=="hero_current":_show_hero_detail();return
+	if kind in ["campaign","hero_roster"]:_show_heroes();return
+	if kind=="hero_back":_show("main");return
+	if kind=="hero_page":hero_page=posmod(int(value),3);_show_heroes();return
+	if kind=="hero_select":hero_id=HEROES.find(str(value))["id"];campaign_unlocked=int(hero_careers[hero_id]["unlocked"]);_save_settings();_show_hero_detail();return
+	if kind in ["hero_start","campaign_start"]:_start_hero_mission(int(value));return
+	if kind=="results_continue" and campaign_match:
+		if career_passed and hero_mission<4:_start_hero_mission(hero_mission+1)
+		else:_show_hero_detail()
+		return
 	if kind=="wheel":
 		if value:_open_wheel()
 		else:_close_wheel(true)
@@ -283,8 +319,12 @@ func _animate_actor(body: CharacterBody3D,motion: RefCounted) -> void:
 	body.get_node("MuzzleFlash").visible=muzzle>0
 	_tick_actor_weapon(body,1.0/60)
 func _respawn_fighter(id: int) -> void:
-	super._respawn_fighter(id)
-	if rails.has(id):rails[id].set_move(Vector2.ZERO)
+	var p: Dictionary=rules.players[id];var stat:=rules.stats(id)
+	p["hp"]=float(stat["health"]);p["shield"]=float(stat["shield"]);p["ammo"]=int(stat["mag"]);p["reload"]=0.0;p["invul"]=2.0
+	var body:=_body(id)
+	if not is_instance_valid(body):return
+	rails[id].reset(body,course,_choose_spawn_node());body.collision_layer=_fighter_layer(id);body.show();Inventory.store(p)
+	if id==local_id:camera.position=Vector3(0,1.75,0);camera.rotation=Vector3.ZERO;gun.show()
 func _replace_departed(id: int) -> void:
 	if id<0 or id>=rules.players.size():return
 	humans.erase(id);rules.players[id]["human"]=false;rules.players[id]["name"]="BOT %d" % (id+1)
@@ -292,6 +332,7 @@ func _replace_departed(id: int) -> void:
 	_notify("A disconnected player is now controlled by a bot.",4)
 func _physics_process(delta: float) -> void:
 	if app_paused:return
+	if running and is_instance_valid(course_root) and course.nav_ready and not spawns_synced and _authority():_sync_random_spawns()
 	if _wheel_open() and (not _alive(local_id) or rules.phase not in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]):_close_wheel(false)
 	if prelude_left>0 and not demo:
 		prelude_left=maxf(0 if _authority() else .02,prelude_left-delta)
@@ -327,10 +368,15 @@ func _physics_process(delta: float) -> void:
 func _handle_phase_change() -> void:
 	if prelude_left>0:return
 	var before: int=phase_revision
+	var ending: bool=rules.phase==Rules.Phase.RESULTS and rules.revision!=before
+	var career_match: bool=campaign_match
+	if ending:campaign_match=false
 	if _authority() and before!=rules.revision and rules.phase==Rules.Phase.SHOP:
 		for orb in cloud.orbs.values():
 			if int(orb["owner"])>=0:rules.credit_essence(int(orb["owner"]),int(orb["value"]))
 	super._handle_phase_change()
+	campaign_match=career_match
+	if ending and not demo:_show_match_results()
 	if before!=phase_revision and rules.phase not in [Rules.Phase.COLLECTION,Rules.Phase.HUNT]:projectiles.clear();lock_states.clear()
 	if before!=phase_revision and rules.phase==Rules.Phase.COLLECTION:_notify("COLLECTION / Kill minions. Their souls fly to the killer.",5)
 func _tick_bots(delta: float) -> void:
@@ -356,7 +402,7 @@ func _tick_bots(delta: float) -> void:
 				var side:=Vector3(-diff.z,0,diff.x).normalized()
 				goal=body.position+side*sin(float(Time.get_ticks_msec())*.001+key)*2.5
 		else:
-			if body.position.distance_to(goal)<1.8:goal=course.nodes[combat_random.randi_range(0,24)];body.set_meta("wander_goal",goal)
+			if body.position.distance_to(goal)<1.8:goal=course.nodes[combat_random.randi_range(0,course.nodes.size()-1)];body.set_meta("wander_goal",goal)
 
 		var direction: Vector3=brains[key].steer(body,motion,goal,delta)
 		if not is_instance_valid(target) and direction.length()>.2:motion.aim_yaw=_turn_toward(motion.aim_yaw,atan2(-direction.x,-direction.z),deg_to_rad(65 if fighter>=0 else 50)*delta)
@@ -414,7 +460,7 @@ func _target_for(id: int) -> Dictionary:
 	var basis:=Basis.from_euler(Vector3(rails[id].pitch,rails[id].aim_yaw,0)) if rails.has(id) else body.global_basis
 	var origin:=body.position+Vector3.UP*1.65
 	if id==local_id:origin=camera.global_position;basis=camera.global_basis
-	var query:=PhysicsRayQueryParameters3D.create(origin,origin-basis.z*40,_ray_mask(id),[body.get_rid()]);query.collide_with_areas=true;query.hit_from_inside=true
+	var query:=PhysicsRayQueryParameters3D.create(origin,origin-basis.z*float(Rules.WEAPONS[rules.players[id]["weapon"]].get("range",40.0)),_ray_mask(id),[body.get_rid()]);query.collide_with_areas=true;query.hit_from_inside=true
 	return get_world_3d().direct_space_state.intersect_ray(query)
 func _tick_auto_combat(delta: float) -> void:
 	for id in humans:
@@ -444,7 +490,7 @@ func _fire_weapon(id: int,aim := Vector3.ZERO) -> void:
 	if id==local_id:
 		basis=camera.global_basis
 		var hit:=_target_for(id)
-		aim=hit.get("position",camera.global_position-camera.global_basis.z*38)
+		aim=hit.get("position",camera.global_position-camera.global_basis.z*float(data.get("range",38.0)))
 		origin=gun.global_transform*_muzzle_offset(rules.players[id]["weapon"])
 		if is_instance_valid(weapon_frame):origin=weapon_frame.muzzle_world(origin)
 		var blocked:=get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(camera.global_position,origin,1))
@@ -455,11 +501,11 @@ func _fire_weapon(id: int,aim := Vector3.ZERO) -> void:
 		if is_instance_valid(target):aim=_lock_point(target)
 	if aim!=Vector3.ZERO:basis=Basis.looking_at((aim-origin).normalized(),Vector3.UP)
 	_spend_shot(id)
-	var pellets:=int(data.get("pellets",1));var spread:=float(data.get("spread",.005))
+	var pellets:=int(data.get("pellets",1));var spread:=float(rules.stats(id)["spread"])
 	for i in range(pellets):
 		var direction:=(-basis.z+basis.x*combat_random.randf_range(-spread,spread)+basis.y*combat_random.randf_range(-spread,spread)).normalized()
-		projectiles.spawn(origin,direction*float(data.get("speed",75)),id,float(rules.stats(id)["damage"]),_ray_mask(id),Color("83c5ff") if rules.players[id]["team"]==0 else Color("ff8f7c"),body.get_rid(),.65)
-	if id!=local_id:_play_distant(origin,data.has("pellets"))
+		projectiles.spawn(origin,direction*float(data.get("speed",75)),id,float(rules.stats(id)["damage"]),_ray_mask(id),Color("83c5ff") if rules.players[id]["team"]==0 else Color("ff8f7c"),body.get_rid(),float(data.get("life",.65)))
+	if id!=local_id:_play_weapon_audio(origin,rules.players[id]["weapon"])
 func _projectile_impact(bullet: Dictionary,hit: Dictionary) -> void:
 	var target: Object=hit["collider"]
 	if target is Node and target.is_queued_for_deletion():return
@@ -468,11 +514,14 @@ func _projectile_impact(bullet: Dictionary,hit: Dictionary) -> void:
 		if owner_id>=0:cloud.destroy(int(target.get_meta("orb")))
 	elif target is CharacterBody3D:
 		if target==player:
-			if owner_id<0 or rules.can_harm(owner_id,local_id):_damage_fighter(local_id,bullet["damage"],owner_id)
+			if owner_id<0 or rules.can_harm(owner_id,local_id):
+				pending_hit_directions[local_id]=-Vector3(bullet["velocity"]).normalized();_damage_fighter(local_id,bullet["damage"],owner_id)
 		elif target.has_meta("role"):
 			if target.get_meta("role")=="minion":
 				if owner_id>=0:_damage_entity(target,bullet["damage"],owner_id)
-			else:_damage_fighter(int(target.get_meta("fighter")),bullet["damage"],owner_id)
+			else:
+				var victim: int=int(target.get_meta("fighter"));pending_hit_directions[victim]=-Vector3(bullet["velocity"]).normalized()
+				_damage_fighter(victim,bullet["damage"],owner_id)
 func _play_distant(pos: Vector3,shotgun: bool) -> void:
 	if not is_instance_valid(distant_shot):return
 	var stream: AudioStream=load("res://assets/audio/shotgun_shot.wav") if shotgun else normal_shot
@@ -492,23 +541,23 @@ func _equip_viewmodel() -> void:
 	if rules.players.is_empty() or not is_instance_valid(shotgun_rig):return
 	var key: String=rules.players[local_id]["weapon"]
 	var pump: bool=key=="pump"
-	double_rig.visible=key=="double";scythe_rig.visible=key=="scythe"
+	double_rig.visible=key=="double";scythe_rig.visible=key=="scythe";carbon_rig.visible=key=="needle";sniper_rig.visible=key=="sniper"
 	if key=="scythe":_tint_scythe(scythe_rig,int(rules.players[local_id]["team"]))
-	gun.get_node("DetailedSidearm").visible=key in ["pulse","needle","scatter"]
-	shotgun_rig.get_node("Shotgun").visible=pump;shotgun_rig.get_node("PumpSlide").visible=pump
-	shotgun_rig.get_node("SupportArm").visible=key in ["pump","double"]
+	gun.get_node("DetailedSidearm").visible=key=="pulse"
+	shotgun_rig.get_node("Shotgun").visible=key in ["pump","scatter"];shotgun_rig.get_node("PumpSlide").visible=key in ["pump","scatter"]
+	shotgun_rig.get_node("SupportArm").visible=key in ["pump","double","scatter","needle","sniper"]
 	shotgun_rig.get_node("GripArm").show()
 	if not pump:
 		for mesh in gun.get_node("DetailedSidearm").find_children("*","MeshInstance3D",true,false):
 			var material: Material=mesh.get_active_material(0)
 			if material is StandardMaterial3D and ("Glove" in material.resource_name or "sleeve" in material.resource_name):mesh.hide()
-	var desired_shot: AudioStream=load("res://assets/audio/scythe_swing.wav") if key=="scythe" else load("res://assets/audio/shotgun_shot.wav") if key in ["pump","double"] else normal_shot
+	var desired_shot: AudioStream=_weapon_shot_stream(key)
 	if shot_sound.stream!=desired_shot:shot_sound.stream=desired_shot
-	var desired_load: AudioStream=load("res://assets/audio/shotgun_load.wav") if key in ["pump","double"] else load("res://assets/audio/reload_lower.wav")
+	var desired_load: AudioStream=load("res://assets/audio/shotgun_load.wav") if key in ["pump","double","scatter"] else load("res://assets/audio/reload_lower.wav")
 	if reload_lower_sound.stream!=desired_load:reload_lower_sound.stream=desired_load
-	var desired_ready: AudioStream=load("res://assets/audio/shotgun_ready.wav") if key in ["pump","double"] else load("res://assets/audio/reload_raise.wav")
+	var desired_ready: AudioStream=load("res://assets/audio/shotgun_ready.wav") if key in ["pump","double","scatter"] else load("res://assets/audio/reload_raise.wav")
 	if reload_raise_sound.stream!=desired_ready:reload_raise_sound.stream=desired_ready
-	_set_weapon_audio_levels(key in ["pump","double"])
+	_set_weapon_audio_levels(key in ["pump","double","scatter","sniper"])
 func _tick_viewmodel(delta: float) -> void:
 	super._tick_viewmodel(delta)
 	gun.scale=Vector3.ONE*.88
@@ -525,7 +574,7 @@ func _tick_viewmodel(delta: float) -> void:
 		flash.hide()
 		var amount:=sin(clampf(swing_age/.45,0,1)*PI)
 		gun.rotation.z-=amount*.45;gun.rotation.y=amount*.65
-	if rules.players[local_id]["weapon"]=="pump":
+	if rules.players[local_id]["weapon"] in ["pump","scatter"]:
 		var offset:=sin(clampf((pump_age-.18)/.32,0,1)*PI)*.11 if pump_age<.50 else 0.0
 		shotgun_rig.get_node("PumpSlide").position.z=offset
 		shotgun_rig.get_node("SupportArm").position.z=offset
@@ -537,7 +586,7 @@ func _set_weapon_audio_levels(pump: bool) -> void:
 
 func _update_audio() -> void:
 	super._update_audio()
-	if not rules.players.is_empty():_set_weapon_audio_levels(rules.players[local_id]["weapon"] in ["pump","double"])
+	if not rules.players.is_empty():_set_weapon_audio_levels(rules.players[local_id]["weapon"] in ["pump","double","scatter","sniper"])
 	if is_instance_valid(pump_sound):pump_sound.volume_db=-80 if sound_volume==0 else -13+linear_to_db(sound_volume*SHOT_VOLUME_SCALE);pump_sound.stream_paused=app_paused or (not demo and not net.in_match and screen!="play")
 	if is_instance_valid(distant_shot):distant_shot.volume_db=-80 if sound_volume==0 else -20+linear_to_db(sound_volume*SHOT_VOLUME_SCALE)
 func _demo_tick(delta: float) -> void:
@@ -569,8 +618,8 @@ func _render_hud(delta: float) -> void:
 	var lock_state: Dictionary=lock_states.get(local_id,{})
 	if float(lock_state.get("ttl",0))>0 and lock_state.get("chosen",false) and not _valid_lock(local_id,_lock_body(int(lock_state.get("target",-1))),true) and p["reload"]<=0:hint="TARGET LOST / RELEASE LOCK"
 	var notice: String=toast if toast_left>0 else ""
-	if not _alive(local_id):notice="RESPAWN / %.0f" % ceilf(p["respawn"]) if p["lives"]>0 else "ELIMINATED / WATCHING THE ROUND"
-	hud_ui.update_view({"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"infinite_ammo":Inventory.infinite(p["weapon"]),"melee":Inventory.melee(p["weapon"]),"notice":notice,"lock_progress":_lock_progress(local_id),"lock_active":float(lock_states.get(local_id,{}).get("ttl",0))>0,"lock_rect":_lock_rect(),"route_hint":"%s / %s" % [conditions.get("time",""),conditions.get("weather","")],"routes":{},"queued":"","can_drop":false,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":not hit.is_empty() and hit["collider"] is CharacterBody3D,"essence_target":essence,"essence_gold":gold,"reload_hint":hint,"reload_progress":1.0-p["reload"]/maxf(.1,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names(),"conditions":conditions,"prelude":prelude_left},delta)
+	if not _alive(local_id):notice="RESPAWN / %.0f" % ceilf(p["respawn"]) if p["lives"]>0 else "ELIMINATED / WATCHING THE MATCH"
+	hud_ui.update_view({"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION","ARMORY","SHARED ROLL","HUNTING","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"infinite_ammo":Inventory.infinite(p["weapon"]),"melee":Inventory.melee(p["weapon"]),"notice":notice,"damage_edges":p.get("damage_edges",Vector4.ZERO),"lock_progress":_lock_progress(local_id),"lock_active":float(lock_states.get(local_id,{}).get("ttl",0))>0,"lock_rect":_lock_rect(),"route_hint":"%s / %s" % [conditions.get("time",""),conditions.get("weather","")],"routes":{},"queued":"","can_drop":false,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":not hit.is_empty() and hit["collider"] is CharacterBody3D,"essence_target":essence,"essence_gold":gold,"reload_hint":hint,"reload_progress":1.0-p["reload"]/maxf(.1,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names(),"conditions":conditions,"prelude":prelude_left},delta)
 	if screen=="shop":
 		var signature:=str([p["souls"],p["weapon"],p["upgrades"],p["ready"]])
 		if signature!=shop_signature:_show_shop()
@@ -687,6 +736,8 @@ func _tick_fighter_states(delta: float) -> void:
 	for p in rules.players:
 		p["touch_auto_left"]=maxf(0,float(p.get("touch_auto_left",0))-delta)
 		p["suction"]=0.0
+		var edges: Vector4=p.get("damage_edges",Vector4.ZERO)
+		p["damage_edges"]=Vector4(maxf(0,edges.x-delta*2.2),maxf(0,edges.y-delta*2.2),maxf(0,edges.z-delta*2.2),maxf(0,edges.w-delta*2.2))
 		Inventory.store(p)
 		if _alive(p["id"]) and p["ammo"]==0 and (p["reserve"]>0 or Inventory.infinite(p["weapon"])) and p["reload"]<=0:_try_reload(p["id"])
 
@@ -791,7 +842,7 @@ func _tick_supplies(delta: float) -> void:
 			elif not Inventory.add_reserve(p,24):continue
 			supply_timers[i]=15.0;node.hide();break
 func _muzzle_offset(key: String) -> Vector3:
-	return Vector3(.19,-.157,-.99) if key=="double" else Vector3(.19,-.157,-1.19) if key=="pump" else Vector3(.15,-.187,-.76)
+	return Vector3(.19,-.157,-1.47) if key=="sniper" else Vector3(.19,-.157,-1.28) if key=="needle" else Vector3(.19,-.157,-.99) if key=="double" else Vector3(.19,-.157,-1.19) if key in ["pump","scatter"] else Vector3(.15,-.187,-.76)
 func _melee_swing(id: int) -> void:
 	_spend_shot(id)
 	var body:=_body(id);var origin:=body.position+Vector3.UP*1.25
@@ -814,7 +865,8 @@ func _play_actor_shot(key: int) -> void:
 	if not is_instance_valid(body):return
 	if key>=0 and key<rules.players.size() and Inventory.melee(rules.players[key]["weapon"]):
 		_play_melee_audio(body.position);body.set_meta("scythe_swing",.4)
-	else:_play_distant(body.position,key>=0 and key<rules.players.size() and rules.players[key]["weapon"] in ["pump","double"])
+	elif key>=0 and key<rules.players.size():_play_weapon_audio(body.position,rules.players[key]["weapon"])
+	else:_play_distant(body.position,false)
 func _tint_scythe(model: Node3D,team: int) -> void:
 	if int(model.get_meta("plasma_team",-1))==team:return
 	model.set_meta("plasma_team",team)
@@ -830,13 +882,13 @@ func _sync_actor_weapon(body: CharacterBody3D,id: int) -> void:
 	var key: String=rules.players[id]["weapon"]
 	if body.get_meta("shown_weapon","")==key:return
 	body.set_meta("shown_weapon",key)
-	for name in ["Armory_scythe","Armory_double"]:
+	for name in ["Armory_scythe","Armory_double","Armory_needle","Armory_sniper"]:
 		var previous:=body.get_node_or_null(name)
 		if is_instance_valid(previous):previous.hide()
-	if key not in ["scythe","double"]:return
+	if key not in ["scythe","double","needle","sniper"]:return
 	var model:=body.get_node_or_null("Armory_"+key)
 	if not is_instance_valid(model):
-		model=SCYTHE.instantiate() if key=="scythe" else DOUBLE.instantiate();model.name="Armory_"+key;body.add_child(model)
+		model={"scythe":SCYTHE,"double":DOUBLE,"needle":CARBON,"sniper":SNIPER}[key].instantiate();model.name="Armory_"+key;body.add_child(model)
 		model.position=Vector3(.12,1.28,.15);model.scale=Vector3.ONE*1.15
 	if key=="scythe":_tint_scythe(model,int(rules.players[id]["team"]))
 	model.show()
@@ -852,3 +904,105 @@ func _ai_choose_weapon(id: int,distance: float) -> void:
 		for key in ["double","needle","pulse","scatter","pump"]:
 			if key in p["owned"]:_switch_weapon(id,key);break
 	elif p["ammo"]==0 and p["reserve"]==0:_switch_weapon(id,"pump")
+
+func _save_settings() -> void:
+	settings.set_value("heroes","selected",hero_id);settings.set_value("heroes","careers",hero_careers)
+	super._save_settings()
+func _show_heroes() -> void:
+	_show("heroes",{"heroes":HEROES.roster(),"careers":hero_careers,"page":hero_page})
+func _show_hero_detail() -> void:
+	var missions: Array=[]
+	for i in range(5):missions.append(HEROES.mission(hero_id,i))
+	_show("hero_detail",{"hero":HEROES.find(hero_id),"career":hero_careers[hero_id],"missions":missions})
+func _start_hero_mission(index: int) -> void:
+	var career: Dictionary=hero_careers[hero_id]
+	if index<0 or index>=5 or index>=int(career["unlocked"]):return
+	hero_mission=index;hero_match_id=hero_id;career_passed=false;campaign_match=true
+	var mission:=HEROES.mission(hero_id,index);campaign_level=int(mission["map"])
+	net.close();local_id=0;_start_match(int(mission["size"]),campaign_level,Time.get_ticks_msec(),[0])
+	_notify(str(mission["title"]).to_upper()+" / "+str(mission["description"]),6)
+func _controller_back() -> void:
+	if screen=="heroes":_show("main")
+	elif screen=="hero_detail":_show_heroes()
+	else:super._controller_back()
+func _record_hero_career() -> String:
+	if career_recorded:return ""
+	career_recorded=true
+	var p: Dictionary=rules.players[local_id];var career: Dictionary=hero_careers[hero_match_id]
+	var mission:=HEROES.mission(hero_match_id,hero_mission)
+	var won: bool=rules.match_winner==int(p["team"])
+	var actual: int={"win":1 if won else 0,"frags":int(p["frags"]),"minions":int(p["minions"]),"souls":int(p["essence"])}[mission["goal"]]
+	career_passed=won and actual>=int(mission["amount"])
+	career["matches"]+=1;career["wins"]+=1 if won else 0;career["frags"]+=int(p["frags"]);career["souls"]+=int(p["essence"])
+	if career_passed:
+		if hero_mission not in career["cleared"]:career["cleared"].append(hero_mission)
+		career["unlocked"]=maxi(int(career["unlocked"]),mini(5,hero_mission+2))
+	career["best"][str(hero_mission)]={"frags":maxi(int(career["best"].get(str(hero_mission),{}).get("frags",0)),int(p["frags"])),"souls":maxi(int(career["best"].get(str(hero_mission),{}).get("souls",0)),int(p["essence"]))}
+	campaign_unlocked=int(hero_careers[hero_id]["unlocked"]);_save_settings()
+	return "%s / %s\n%s\nCAREER %d / 5 COMPLETE" % [HEROES.find(hero_match_id)["name"],"CHAPTER CLEARED" if career_passed else "OBJECTIVE NOT CLEARED",mission["description"],career["cleared"].size()]
+func _show_match_results() -> void:
+	var p: Dictionary=rules.players[local_id]
+	var result: String="DRAW" if rules.match_winner<0 else "VICTORY" if rules.match_winner==int(p["team"]) else "DEFEAT"
+	var summary: String="%s\n%d FRAGS / %d SOULS\nMATCH COMPLETE" % [result,p["frags"],p["essence"]]
+	if campaign_match and not net.in_match:summary+="\n\n"+_record_hero_career()
+	_show("results",{"summary":summary})
+func _show_shop() -> void:
+	var p: Dictionary=rules.players[local_id];var items: Array=[]
+	for key in Rules.WEAPONS:
+		if key in p["owned"] or (Rules.WEAPONS[key].get("human_only",false) and not p["human"]):continue
+		items.append({"id":key,"text":"%s / %d SOULS" % [Rules.WEAPONS[key]["name"],Rules.WEAPONS[key]["cost"]],"disabled":p["ready"] or p["souls"]<Rules.WEAPONS[key]["cost"]})
+	for key in Rules.UPGRADES:
+		var data: Dictionary=Rules.UPGRADES[key]
+		items.append({"id":key,"text":"%s / %d" % [data["name"],data["cost"]],"disabled":p["ready"] or p["souls"]<data["cost"] or int(p["upgrades"].get(key,0))>=data["limit"]})
+	_show("shop",{"items":items});shop_signature=str([p["souls"],p["weapon"],p["upgrades"],p["ready"]])
+func _tick_bot_shopping() -> void:
+	if Rules.SHOP_TIME-rules.remaining<1.5:return
+	for p in rules.players:
+		if p["human"] or p["shop_done"]:continue
+		var id: int=p["id"]
+		for key in ["double","needle","pulse","scatter"]:
+			if key not in p["owned"] and p["souls"]>=Rules.WEAPONS[key]["cost"]:_purchase(id,key);break
+		for key in ["damage","choke"]:
+			if p["souls"]>=Rules.UPGRADES[key]["cost"]:_purchase(id,key)
+		if p["souls"]>=15 and p["reserve"]>=0 and p["reserve"]<36:_purchase(id,"ammo")
+		p["shop_done"]=true;rules.ready(id)
+func _choose_spawn_node() -> int:
+	var available: Array=course.spawn_nodes.duplicate() if not course.spawn_nodes.is_empty() else range(course.nodes.size())
+	var best: int=int(available[combat_random.randi_range(0,available.size()-1)]);var greatest:=-1.0
+	for attempt in range(mini(60,available.size())):
+		var index: int=int(available[combat_random.randi_range(0,available.size()-1)])
+		var separation:=9999.0
+		for body in entities.values()+[player]:
+			if not is_instance_valid(body) or not body.visible:continue
+			separation=minf(separation,course.nodes[index].distance_squared_to(body.position))
+		if separation>9:return index
+		if separation>greatest:greatest=separation;best=index
+	return best
+func _sync_random_spawns() -> void:
+	spawns_synced=true
+	for p in rules.players:
+		var id: int=p["id"]
+		if rails.has(id):rails[id].reset(_body(id),course,_choose_spawn_node())
+	for key in enemy_motions:
+		if key>=100 and entities.has(key):enemy_motions[key].reset(entities[key],course,_choose_spawn_node())
+func _spawn_minion(_node: int,subtype := "") -> void:
+	super._spawn_minion(_choose_spawn_node(),subtype)
+func _damage_fighter(victim: int,amount: float,attacker := -1) -> void:
+	var direction: Vector3=pending_hit_directions.get(victim,Vector3.ZERO);pending_hit_directions.erase(victim)
+	if direction==Vector3.ZERO and attacker>=0 and is_instance_valid(_body(attacker)) and is_instance_valid(_body(victim)):direction=_body(attacker).position-_body(victim).position
+	var p: Dictionary=rules.players[victim];var before: float=p["hp"]+p["shield"]
+	super._damage_fighter(victim,amount,attacker)
+	if p["hp"]+p["shield"]>=before or direction.length()<.01:return
+	var local: Vector3=Basis(Vector3.UP,rails[victim].aim_yaw).inverse()*direction.normalized()
+	var edges:=Vector4(maxf(0,-local.x),maxf(0,local.x),maxf(maxf(0,-local.z),maxf(0,local.y)),maxf(maxf(0,local.z),maxf(0,-local.y)))
+	var old: Vector4=p.get("damage_edges",Vector4.ZERO)
+	p["damage_edges"]=Vector4(maxf(old.x,edges.x),maxf(old.y,edges.y),maxf(old.z,edges.z),maxf(old.w,edges.w))
+func _weapon_shot_stream(key: String) -> AudioStream:
+	if key=="scythe":return load("res://assets/audio/scythe_swing.wav")
+	if key=="needle":return load("res://assets/audio/carbine_shot.wav")
+	if key=="sniper":return load("res://assets/audio/sniper_shot.wav")
+	if key in ["pump","double","scatter"]:return load("res://assets/audio/shotgun_shot.wav")
+	return normal_shot
+func _play_weapon_audio(position: Vector3,key: String) -> void:
+	if not is_instance_valid(distant_shot):return
+	distant_shot.stream=_weapon_shot_stream(key);distant_shot.global_position=position;distant_shot.play()

@@ -66,8 +66,8 @@ func verify() -> void:
  for i in range(180):
   await physics_frame;motion.set_move(Vector2(0,-1));g._tick_human_motion(1.0/60)
   if not g._alive(0):break
- check(g.rules.players[0]["lives"]==lives-1,"Falling off an actual platform consumes a life")
- g._tick_fighter_states(3.1)
+ check(g.rules.players[0]["lives"]==lives,"Lower roof catches former platform falls")
+ g._respawn_fighter(0)
  check(g._alive(0) and motion.move_input==Vector2.ZERO,"Respawn does not restart automatic movement")
  # Shotgun pellets travel through the world and damage only when they collide.
  for body in g.entities.values():body.position=Vector3(100,0,100)

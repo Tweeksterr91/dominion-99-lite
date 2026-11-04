@@ -19,15 +19,15 @@ func verify() -> void:
  g.prelude_left=0;g._show("play")
  var p: Dictionary=g.rules.players[0]
  assert(p["owned"]==["pump","scythe"] and p["reserve"]==-1)
- assert(g.Rules.ROUND_COUNT==3 and g.Rules.COLLECTION_TIME==82.5 and g.Rules.SHOP_TIME==30 and g.Rules.HUNT_TIME==82.5 and g.Rules.REVEAL_TIME==3)
+ assert(g.Rules.ROUND_COUNT==1 and g.Rules.COLLECTION_TIME==82.5 and g.Rules.SHOP_TIME==30 and g.Rules.HUNT_TIME==82.5 and g.Rules.REVEAL_TIME==3)
  for i in range(25):
   p["ammo"]=1;p["fire_cd"]=0;g._fire_weapon(0)
   assert(p["ammo"]==0 and p["reload"]>0 and p["reserve"]==-1)
   g._complete_reload(0);assert(p["ammo"]==5 and p["reserve"]==-1)
  assert(not g._switch_weapon(0,"needle"),"Unowned weapon cannot be equipped")
  g.rules.phase=g.Rules.Phase.SHOP;p["souls"]=1000
- for key in ["double","pulse","needle","scatter"]:g._purchase(0,key)
- assert(p["owned"].size()==6 and p["inventory"].size()==6,"All acquired weapons remain available together")
+ for key in ["double","pulse","needle","scatter","sniper"]:g._purchase(0,key)
+ assert(p["owned"].size()==7 and p["inventory"].size()==7,"All acquired weapons remain available together")
  g.rules.phase=g.Rules.Phase.COLLECTION
  g._switch_weapon(0,"pulse");p["ammo"]=7;p["reserve"]=41
  g._switch_weapon(0,"needle");p["ammo"]=11;p["reserve"]=26
@@ -39,7 +39,8 @@ func verify() -> void:
  button(JOY_BUTTON_LEFT_SHOULDER,true)
  assert(g._wheel_open() and g.pad_input.wheel_open,"LB opens the wheel instead of jumping")
  var ammo: int=p["ammo"];g._fire_weapon(0);assert(p["ammo"]==ammo,"No firing through the open wheel")
- axis(JOY_AXIS_RIGHT_X,.866);axis(JOY_AXIS_RIGHT_Y,-.5);g.pad_input.step(.04)
+ var scythe_dir:=Vector2.from_angle(-PI/2+TAU*g.hud_ui.wheel.keys.find("scythe")/7)
+ axis(JOY_AXIS_RIGHT_X,scythe_dir.x);axis(JOY_AXIS_RIGHT_Y,scythe_dir.y);g.pad_input.step(.04)
  assert(g.hud_ui.wheel.selected=="scythe")
  button(JOY_BUTTON_LEFT_SHOULDER,false)
  assert(not g._wheel_open() and p["weapon"]=="scythe" and p["ammo"]==1)
@@ -99,10 +100,10 @@ func verify() -> void:
  g._close_wheel(false);g._set_lock_input(0,false)
  g.rules.players[1]["fire_cd"]=0;g.rules.players[1]["ammo"]=5;g._fire_weapon(1,g.player.position+Vector3.UP)
  assert(g.rules.players[1]["fire_cd"]>=1.16,"Bot shooting cadence is slower than the player interval")
- g.rules.phase=g.Rules.Phase.HUNT;g.rules.advance();g._handle_phase_change()
- assert(g.rules.round_index==2 and p["owned"].size()==6 and p["inventory"].size()==6,"Weapon ownership persists to the next round")
  g.pad_input.bind("wheel",JOY_BUTTON_X);g._save_settings();g._load_controller_settings()
  assert(g.pad_input.bindings["wheel"]==JOY_BUTTON_X,"Weapon-wheel remapping persists")
  button(JOY_BUTTON_LEFT_SHOULDER,true);assert(g._wheel_open());button(JOY_BUTTON_LEFT_SHOULDER,false);assert(not g._wheel_open(),"LB fallback releases after wheel remapping")
- print("PASS: three half-length rounds, clear start screens, infinite pump/scythe, all-weapon inventory/ammo persistence, reload cancellation, LB wheel/release, team-colored melee, double-barrel upgrade, sticky lock target")
+ g.rules.phase=g.Rules.Phase.HUNT;g.rules.advance();g._handle_phase_change()
+ assert(g.rules.phase==g.Rules.Phase.RESULTS and p["owned"].size()==7 and p["inventory"].size()==7,"Match ends after one hunting phase")
+ print("PASS: one match, clear start screens, infinite pump/scythe, all-weapon inventory/ammo persistence, reload cancellation, LB wheel/release, team-colored melee, double-barrel upgrade, sticky lock target")
  g._quit_game()

@@ -1,5 +1,5 @@
 extends Node3D
-const TIMES := ["DARK SUNSET 19:10","STORM FRONT 20:05","OVERCAST DUSK 18:40","NIGHT 23:20"]
+const TIMES := ["DARK SUNSET","STORM FRONT","OVERCAST DUSK","NIGHT"]
 const WEATHERS := [["OVERCAST","RAIN","FOG","CALM BEFORE STORM"],["OVERCAST","FOG","CALM BEFORE STORM"],["OVERCAST","ASH STORM","FOG"],["OVERCAST","RAIN","FOG","SNOW"],["OVERCAST","SANDSTORM","CALM BEFORE STORM"]]
 var conditions: Dictionary={}
 var particles: MultiMeshInstance3D
@@ -17,7 +17,8 @@ func apply(value: Dictionary,environment: Environment,sun: DirectionalLight3D,ca
 	sky.sky_horizon_color=[Color("684650"),Color("354452"),Color("4b505c"),Color("202c41")][index]
 	if weather!="CLEAR":sky.sky_top_color=sky.sky_top_color.lerp(Color("283341"),.25);sky.sky_horizon_color=sky.sky_horizon_color.lerp(Color("3d4656"),.20)
 	sky.ground_bottom_color=Color("20262c");sky.ground_horizon_color=sky.sky_horizon_color.darkened(.25)
-	var sky_resource:=Sky.new();sky_resource.sky_material=sky;sky_resource.radiance_size=Sky.RADIANCE_SIZE_128
+	var city:=ShaderMaterial.new();city.shader=preload("res://assets/city_sky.gdshader");city.set_shader_parameter("zenith",sky.sky_top_color);city.set_shader_parameter("horizon",sky.sky_horizon_color)
+	var sky_resource:=Sky.new();sky_resource.sky_material=city;sky_resource.radiance_size=Sky.RADIANCE_SIZE_128
 	environment.sky=sky_resource;environment.background_mode=Environment.BG_SKY;environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color=Color("b9c9da");environment.ambient_light_energy=.48 if index!=3 else .34
 	environment.reflected_light_source=Environment.REFLECTION_SOURCE_SKY

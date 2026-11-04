@@ -1,7 +1,7 @@
 extends RefCounted
 ## Shared 5x5 corridor graph. Height changes have real gaps and landing platforms.
 const STONE = preload("res://assets/stone.gdshader")
-const NAMES := ["VERDANT RUINS", "BLUE CATACOMBS", "EMBER VAULT", "ROOTBOUND FOREST", "DUNE COAST"]
+const NAMES := ["CANAL WARD", "CIVIC UNDERCROFT", "IRONWORKS", "VERDANT CONSERVATORY", "EAST RIVER DOCKS"]
 const STEP := 12.0
 const THEMES := [
 	[Color("374d3d"), Color("45544a"), Color("182d20"), Color("9eac75"), Color("0c1715")],

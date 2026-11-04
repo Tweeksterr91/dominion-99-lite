@@ -1,3 +1,11 @@
+# Boroughs & Careers (v0.12.0)
+
+Neo-Prohibition New York is the new setting foundation. Stepped Art Deco skyline silhouettes and 48 distant 3D buildings with amber windows and water towers surround the rooftop arenas. Existing materials remain; piers, plinths, column bases and masonry ramp cheeks tie elevated walkways to larger structures. A lower rooftop closes former void gaps. The perimeter keeps fighters inside while preserving the city view. Small batched foliage patches and hanging vines suggest reclaimed buildings.
+
+Carbon Carbine and Warden Sniper are original textured, matte military-style rifles, with olive polymer, steel, magazines, rails and mechanical details. The sniper adds a scope, long barrel and folded bipod; neither uses emissive neon. New vector hero emblems introduce the 24-person roster while existing Sentinel combat meshes remain. Full individual hero models and more detailed environmental art remain future work.
+
+Earlier iteration notes follow.
+
 # Plasma Armory (v0.11.0)
 
 Title/main gradients are removed. The new radial wheel displays all six slots, highlights the chosen acquired weapon, and marks locked slots. The pump/scythe are always owned; the pump and sawed-off double have infinite reserve, while the scythe has unlimited use. Original double-barrel and plasma-scythe models share the existing anatomical weapon hand; the scythe edge follows red/blue team color and has a swing animation/sound. The double barrel uses its own shorter paired barrels and walnut fore-end.

@@ -6,7 +6,7 @@ signal state_received(state: Dictionary)
 signal action_received(fighter: int, kind: String, value: Variant, sequence: int)
 signal connection_error(message: String)
 signal fighter_disconnected(fighter: int)
-const PROTOCOL := 11
+const PROTOCOL := 12
 const PORT := 27799
 var active := false
 var in_match := false

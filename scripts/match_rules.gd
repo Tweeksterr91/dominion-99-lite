@@ -1,10 +1,10 @@
 extends RefCounted
-## Authoritative, renderer-independent three-round match rules.
+## Authoritative, renderer-independent single-match match rules.
 enum Phase { COLLECTION, SHOP, REVEAL, HUNT, RESULTS }
 const COLLECTION_TIME := 82.5
 const SHOP_TIME := 30.0
 const HUNT_TIME := 82.5
-const ROUND_COUNT := 3
+const ROUND_COUNT := 1
 const REVEAL_TIME := 3.0
 const ROUND_LIVES := 5
 const WEAPONS := {
@@ -12,15 +12,13 @@ const WEAPONS := {
 	"scythe":{"name":"PLASMA SCYTHE","damage":75.0,"interval":.95,"mag":1,"reload":0.0,"cost":0,"infinite":true,"melee":true,"range":3.0},
 	"double":{"name":"SAWED-OFF DOUBLE","damage":15.0,"pellets":10,"spread":.10,"speed":58.0,"interval":.55,"mag":2,"reload":2.2,"cost":140,"infinite":true},
 	"pulse": {"name": "D-9 PULSE", "damage": 34.0, "interval": 0.22, "mag": 12, "reload": 1.6, "cost": 60},
-	"needle": {"name": "NEEDLE CARBINE", "damage": 23.0, "interval": 0.13, "mag": 24, "reload": 1.9, "cost": 80},
-	"scatter": {"name": "ASH SCATTERGUN", "damage": 62.0, "interval": 0.60, "mag": 6, "reload": 1.8, "cost": 100},
+	"needle": {"name": "CARBON CARBINE", "damage": 23.0, "interval": 0.13, "mag": 24, "reload": 1.9, "cost": 80},
+	"sniper":{"name":"WARDEN SNIPER","damage":110.0,"interval":1.4,"mag":5,"reload":2.6,"cost":180,"speed":150.0,"range":105.0,"spread":.002,"life":1.0,"human_only":true},
+	"scatter": {"name": "ASH SCATTERGUN", "damage": 13.0,"pellets":6,"spread":.07,"speed":58.0, "interval": 0.60, "mag": 6, "reload": 1.8, "cost": 100},
 }
 const UPGRADES := {
+	"choke":{"name":"TIGHT CHOKE / 18% LESS SHOTGUN SPREAD","cost":45,"limit":3},
 	"damage": {"name": "EDGE / +5% DAMAGE", "cost": 45, "limit": 3},
-	"shield": {"name": "AEGIS / +20 MAX SHIELD", "cost": 40, "limit": 3},
-	"health": {"name": "VITAL / +20 MAX HEALTH", "cost": 40, "limit": 3},
-	"reload": {"name": "CHAMBER / 8% FASTER RELOAD", "cost": 45, "limit": 3},
-	"heal": {"name": "FIELD PATCH / RESTORE HEALTH", "cost": 20, "limit": 99},
 	"ammo": {"name": "RESUPPLY / +72 RESERVE", "cost": 15, "limit": 99},
 }
 const GIFTS := [
@@ -161,6 +159,7 @@ func buy(id: int, item: String) -> bool:
 		return false
 	var p := players[id]
 	if WEAPONS.has(item):
+		if WEAPONS[item].get("human_only",false) and not p.get("human",id==0):return false
 		if item in p["owned"]:
 			p["weapon"] = item
 			return true
@@ -185,5 +184,6 @@ func stats(id: int, weapon_id := "") -> Dictionary:
 	var p := players[id]
 	var u: Dictionary = p["upgrades"]
 	var g: Dictionary = p["gifts"]
-	var weapon: Dictionary = WEAPONS[p["weapon"] if weapon_id.is_empty() else weapon_id]
-	return {"health": 100 + int(u.get("health", 0)) * 20, "shield": 100 + int(u.get("shield", 0)) * 20 + int(g.get("aegis", 0)) * 5, "damage": weapon["damage"] * (1.0 + int(u.get("damage", 0)) * 0.05 + int(g.get("edge", 0)) * 0.02), "interval": weapon["interval"], "mag": weapon["mag"], "reload": weapon["reload"] * pow(0.92, int(u.get("reload", 0))) * pow(0.97, int(g.get("chamber", 0))), "reach": 12.0 + int(g.get("reach", 0)), "shield_delay": maxf(2.0, 4.0 - int(g.get("recovery", 0)) * 0.15)}
+	var key: String=p["weapon"] if weapon_id.is_empty() else weapon_id
+	var weapon: Dictionary = WEAPONS[key]
+	return {"health": 100 + int(u.get("health", 0)) * 20, "shield": 100 + int(u.get("shield", 0)) * 20 + int(g.get("aegis", 0)) * 5, "damage": weapon["damage"] * (1.0 + int(u.get("damage", 0)) * 0.05 + int(g.get("edge", 0)) * 0.02), "interval": weapon["interval"],"spread":float(weapon.get("spread",.005))*pow(.82,int(u.get("choke",0))) if key in ["pump","double","scatter"] else float(weapon.get("spread",.005)), "mag": weapon["mag"], "reload": weapon["reload"] * pow(0.92, int(u.get("reload", 0))) * pow(0.97, int(g.get("chamber", 0))), "reach": 12.0 + int(g.get("reach", 0)), "shield_delay": maxf(2.0, 4.0 - int(g.get("recovery", 0)) * 0.15)}
