@@ -5,7 +5,7 @@ func _initialize() -> void:
 	call_deferred("verify")
 
 func verify() -> void:
-	var game = load("res://main.tscn").instantiate()
+	var game = load("res://scripts/main.gd").new()
 	root.add_child(game)
 	current_scene = game
 	game.set_physics_process(false)
@@ -99,7 +99,11 @@ func verify() -> void:
 	game.enemies.clear()
 	game._physics_process(0.01)
 	_check(game.finished and not game.running and game.menu_title.text == "ARENA SECURED", "Victory")
-	game._start()
+	game.finished = false
+	game.queue_free()
+	var replacement = load("res://scripts/main.gd").new()
+	root.add_child(replacement)
+	current_scene = replacement
 	await process_frame
 	await process_frame
 	game = current_scene

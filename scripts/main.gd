@@ -429,7 +429,7 @@ func _shoot() -> void:
 	shot_sound.play()
 	var origin := camera.global_position
 	var hit := _ray(origin, origin - camera.global_basis.z * 60, [player.get_rid()])
-	if not hit.is_empty() and hit.collider in enemies:
+	if not hit.is_empty() and hit.collider is CharacterBody3D and hit.collider in enemies:
 		hit_left = 0.14
 		var enemy: CharacterBody3D = hit.collider
 		var hp := int(enemy.get_meta("hp")) - 34

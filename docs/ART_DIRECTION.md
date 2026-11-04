@@ -1,37 +1,25 @@
-# Dominion '99 (Lite): dark sci-fi visual direction
+# Dominion '99 (Lite): auto-runner biomes
 
-## Sector 99
+The active game is a portrait auto-runner FPS. The references Turok: Rage Wars, Quake, Unreal Tournament 3, and Quake 3 Arena inform the weight of combat and the dark sci-fi weapon/enemy designs. Original stone and natural environments now replace the earlier neon facility.
 
-A decommissioned containment facility converted into a combat arena. Cold cyan power conduits cut across worn steel and rusted supports. Amber reactor cages hang overhead. Crimson visors identify the hostile Wardens.
+## Environment kit
 
-The requested references—Turok: Rage Wars, Quake, Unreal Tournament 3, and Quake 3 Arena—guide the atmosphere, weight of the architecture, aggressive silhouettes, and readable arena combat. This project uses original designs and code rather than those games' assets.
+- Verdant Ruins: mossy dark greens, aged masonry, hanging growth, and roofed chambers.
+- Blue Catacombs: cold blue and gray stone, enclosed hallways, and dim chamber accents.
+- Ember Vault: basalt-like stone, warm chamber details, and lava outside the running routes.
+- Rootbound Forest: open tree-lined paths, low mossy barriers, and faceted canopies.
+- Dune Coast: sandstone, low route walls, faceted dunes, stylized palms, and a coastal palette.
 
-## First asset kit
+Each has a different connected hallway layout over a shared 5x5 junction grid. Raised paths, visible ledge markings, single/double-jump gaps, and descending routes support movement decisions. Open vertical transitions provide headroom for physical jumps. These are early modular environment treatments, not finished art worlds.
 
-- **Environment:** modular armored walls, ribbed supports, four cover pylons, ceiling trusses, suspended reactor, floor conduits, and Sector 99 signage.
-- **D-9 sidearm:** chamfered gunmetal receiver, energy spine, muzzle cage, gloved hand, and armored sleeve.
-- **Warden:** broad pale shoulder armor, dark helmet, crimson visor, chest core, segmented legs, and energy rifle.
-- **Pickups:** armored health cases with green crosses and amber ammo cases with cartridge markings.
-- **HUD:** dark panels, sharp cyan edges, health and regenerating shield at lower left, ammo at lower right, and an amber hit marker.
+## Character and interface
 
-## Color and visibility
+The D-9 sidearm retains chamfered gunmetal armor, an energy spine, a gloved hand, and an armored sleeve. Wardens have pale shoulder armor and crimson visors. Bots move through the same graph as the player, including their own turn choices and height transitions.
 
-| Role | Color |
-| --- | --- |
-| Main armor | Gunmetal / desaturated blue-gray |
-| Recesses and ceiling | Near-black blue |
-| Structural wear | Muted oxidized brown |
-| Facility power and player weapon | Cyan |
-| Enemy identification | Crimson |
-| Ammo and warning markings | Amber |
-| Health identification | Green |
+The crosshair is thin, centered, and target-reactive. Route prompts and contextual buttons sit below it. The lower corners retain health and regenerating shield on the left and ammunition on the right. Movement/fire/reload controls are absent.
 
-Darkness establishes atmosphere while pale armor and emissive identifiers preserve targets' visibility. The portrait camera keeps its horizontal field of view; the weapon stays below and to the right of the aiming area.
+## Asset implementation
 
-## Assets and performance
+`corridor_map.gd` builds the geometry and uses batched MultiMesh instances. `stone.gdshader` adds original procedural variation and mortar lines. `visual_assets.gd` and `metal.gdshader` provide the original weapon, enemy, and pickup kit. Materials and meshes are shared. There are no real-time shadows or post-process bloom.
 
-`scripts/visual_assets.gd` generates the original models. Moving armor pieces use one shared chamfered box mesh. Static architecture and individual models group their pieces into MultiMesh instances by material. `assets/metal.gdshader` adds procedural wear and machining marks without external texture downloads. Illuminated accents use inexpensive unshaded materials rather than post-process bloom. There are no real-time shadows.
-
-Portrait orientation and the fixed 60 FPS cap remain. Actual performance still requires measurement on the OnePlus 12R. Desktop software-renderer screenshots verify appearance and shader compilation, not Android frame rate.
-
-`preview.png` is an in-engine capture with enemies positioned for visibility; it is not concept art. This is an initial asset pass, with room for animation, richer silhouettes, more varied arena architecture, and further surface detail.
+The screenshots in `biomes/` are in-engine captures with bots positioned for visibility. They verify the renderer and shaders, not Android performance. Portrait and the 60 FPS cap remain; the OnePlus 12R still needs on-device testing.
