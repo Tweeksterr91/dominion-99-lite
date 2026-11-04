@@ -1,16 +1,17 @@
-# v0.5.0 — Sentinels & Gold
+# v0.6.0 — Rotate & Play
 
-- Full circles around the jump and harvest buttons; a new spectral-flame soul icon.
-- Godot splash image disabled. Android's native startup may briefly show the game's app icon.
-- New original armored Sentinel player model with its own skeleton and running, idle, and jump clips. Players are larger than minions; blue/red armor accents and wall-respecting blue/red outlines identify teams.
-- Circular 180° U-turn button directly below jump; reverses movement without teleporting. Desktop shortcut: Q. Works over LAN with local prediction and host validation.
-- Default aim sensitivity increased to 180%. Options offer 50–300% adjustment in 10% steps, reset, and saved preferences. Earlier low/normal/high choices migrate to faster equivalents.
-- Five original ambient industrial/techno music loops, one per biome, plus a quiet brown-noise layer. Separate saved effects/music/ambience volumes and mute; offline pause suspends audio.
-- Scavenger, fast/light Stalker, and slow/heavy Brute minions have different health, movement and attacks.
-- Rare Gilded Revenant treasure minion appears once per collection phase at a random time, flees players, and drops 90 gold souls—six times an ordinary minion. Gold can be harvested or stolen by either team, cannot be destroyed, does not waste denial ammunition, and remains until collection ends.
+- One APK supports automatic portrait and landscape rotation, including either landscape direction. Rotation preserves the current match, inventory, lives, and round timer. Options also offers Auto/Portrait/Landscape preference, so you can force landscape for a Backbone even when system auto-rotation is off.
+- Dedicated landscape HUD, menus, shop, shared-roll reveal, options and campaign layouts. Health/shield and ammo remain at the screen edges; aim stays centered. Camera projection adjusts to the aspect ratio; Android cutout margins protect the edge UI.
+- Standard Android USB-C/Bluetooth gamepad support, including the Backbone Android control scheme, through Godot's native controller mapping. Hot-plug support and automatic touch/controller HUD switching.
+- Right stick aims; left stick/D-pad chooses routes. A/RB jump, B/LT reverse, X/RT reload/active timing, Y/LB harvest, Start pauses, View opens the guide. Face-button labels adapt to recognized PlayStation/Nintendo names; firing stays automatic.
+- Controller-only menu navigation and shop use. LAN IP entry uses the phone's keyboard.
+- Controller Settings: independent aim sensitivity, radial deadzone, curved fine-aim response, stick swapping, saved primary button remapping, and reset. Holding a trigger does not retrigger active reload.
+- Controller disconnect pauses offline play and restores touch input. LAN matches continue with touch fallback.
 
-The five-round collection/shop/shared-roll/hunting flow remains. LAN protocol updated: **all participating phones must install v0.5.0**. Same application ID and signing certificate; versionCode 8. Install as an update over the previous APK.
+Install `dominion-99-lite.apk` as an update. Same application ID and signing certificate; versionCode 9. Existing settings/campaign progress are retained. The original five-round rules, treasure minions, gold souls, team outlines, audio, and fixed 60 FPS cap remain.
 
-Validated: portrait control layout, actual touch navigation, precise 180° reversal and continued collision movement, saved sensitivity, animated Sentinel joints and team outline materials, minion stats/speed, scheduled treasure spawn, gold denial immunity and collection by both teams, looping audio/mute, existing combat/reload/essence/shop/respawn rules, real collision jumps/drop, and two-process 4v4 LAN with reversals, minion variants and gold snapshots. Physical Android multiplayer, audio mix and OnePlus 12R frame rate still need phone testing. Portrait, fixed 60 FPS cap.
+Validated with standard synthetic gamepad events: controller-only launch/navigation, analog aim and route choices, face/shoulder/trigger actions, active reload timing, remapping/persistence, stick swap, deadzone, hot-plug fallback, shop/guide navigation, phone/tablet landscape and portrait bounds, centered reticle and state-preserving rotation. Existing combat, rules/economy, animations, gold souls and real-collision traversal tests pass. Two-process 4v4 LAN passes with a landscape host, portrait guest, and controller-originated turn-around action.
 
-Original Sentinel, rig/animations, audio, controls and code: MIT. Adapted Sinbad minions by Zi Ye: CC BY-SA 3.0. ambientCG/Poly Haven: CC0. Rajdhani: SIL OFL. Full notices in ASSET_CREDITS.md. Screenshots/video containing Sinbad are CC BY-SA 3.0.
+A physical Backbone and other Android controllers are not attached to the build environment: hardware mappings, device audio/performance and rotation still need phone testing. This build uses the standard Android gamepad path and user-adjustable bindings, without a Backbone-specific SDK dependency.
+
+Original project code/art/audio: MIT; adapted Sinbad minions by Zi Ye: CC BY-SA 3.0; ambientCG/Poly Haven: CC0; Rajdhani: SIL OFL. Full notices: ASSET_CREDITS.md. Screenshots/video containing Sinbad are CC BY-SA 3.0.

@@ -1,4 +1,5 @@
 extends "res://scripts/runner.gd"
+const Controller = preload("res://scripts/controller_input.gd")
 const Minions = preload("res://scripts/minion_types.gd")
 const Soundscape = preload("res://scripts/map_soundscape.gd")
 const Rules = preload("res://scripts/match_rules.gd")
@@ -9,6 +10,11 @@ const EssenceCloud = preload("res://scripts/essence_cloud.gd")
 const HAND = preload("res://assets/models/essence_hand.glb")
 var rules := Rules.new()
 var hud_ui: CanvasLayer
+var pad_input: Node
+var guide_origin := "main"
+var guide_context: Dictionary = {}
+var safe_area_check_left := 0.0
+var last_device_safe_area := Rect2i()
 var net: Node
 var cloud: Node3D
 var entities: Dictionary = {}
@@ -31,6 +37,7 @@ var treasure_spawn_left := 90.0
 var sound_volume := 0.8
 var invert_aim := false
 var camera_motion := true
+var orientation_mode := "auto"
 var options_origin := "main"
 var last_ip := ""
 var phase_revision := -1
@@ -80,6 +87,17 @@ func _ready() -> void:
 	hud_ui = ArenaHUD.new()
 	add_child(hud_ui)
 	hud_ui.action.connect(_ui_action)
+	pad_input = Controller.new()
+	add_child(pad_input)
+	_load_controller_settings()
+	pad_input.command.connect(_controller_command)
+	pad_input.look.connect(_controller_look)
+	pad_input.mode_changed.connect(_controller_mode)
+	pad_input.bindings_changed.connect(_controller_bound)
+	pad_input.disconnected.connect(_controller_disconnected)
+	get_window().size_changed.connect(_adapt_orientation)
+	_apply_orientation_preference()
+	_adapt_orientation()
 	cloud = EssenceCloud.new()
 	add_child(cloud)
 	cloud.collected.connect(_essence_collected)
@@ -100,6 +118,8 @@ func _load_settings() -> void:
 	sound_volume = clampf(float(settings.get_value("audio","volume",0.8)),0,1)
 	invert_aim = settings.get_value("controls","invert",false)
 	camera_motion = settings.get_value("controls","motion",true)
+	orientation_mode = str(settings.get_value("display","orientation","auto"))
+	if orientation_mode not in ["auto","portrait","landscape"]:orientation_mode="auto"
 	campaign_unlocked = clampi(int(settings.get_value("campaign","unlocked",1)),1,5)
 	last_ip = settings.get_value("network","last_ip","")
 
@@ -109,9 +129,15 @@ func _save_settings() -> void:
 	settings.set_value("audio","ambience",ambience_volume)
 	settings.set_value("controls","invert",invert_aim)
 	settings.set_value("controls","motion",camera_motion)
+	settings.set_value("display","orientation",orientation_mode)
 	settings.set_value("audio","volume",sound_volume)
 	settings.set_value("campaign","unlocked",campaign_unlocked)
 	settings.set_value("network","last_ip",last_ip)
+	if is_instance_valid(pad_input):
+		settings.set_value("controller","sensitivity",pad_input.sensitivity)
+		settings.set_value("controller","deadzone",pad_input.deadzone)
+		settings.set_value("controller","swap_sticks",pad_input.swap_sticks)
+		settings.set_value("controller","bindings",pad_input.bindings)
 	settings.save("user://dominion_settings.cfg")
 
 func _authority() -> bool:
@@ -119,13 +145,15 @@ func _authority() -> bool:
 
 func _show(value: String,context: Dictionary={}) -> void:
 	screen = value
+	if value!="join":_hide_keyboard()
 	hud_ui.show_screen(value,context)
 	touch_aim = -1
-	if value == "play" and not OS.has_feature("mobile"):
+	if value == "play" and not OS.has_feature("mobile") and (not is_instance_valid(pad_input) or not pad_input.active):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	else:Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	phase_wall_time = Time.get_ticks_usec()
 	_update_audio()
+	if is_instance_valid(pad_input):pad_input.playing=value=="play" and not demo
 
 func _ui_action(kind: String,value: Variant) -> void:
 	match kind:
@@ -153,7 +181,7 @@ func _ui_action(kind: String,value: Variant) -> void:
 		"join_screen":_show("join",{"ip":last_ip})
 		"lan_join":
 			last_ip = hud_ui.ip.text.strip_edges()
-			DisplayServer.virtual_keyboard_hide()
+			_hide_keyboard()
 			_save_settings()
 			var error: Error = net.join_room(last_ip)
 			if error == OK:_show("lobby",{"status":"CONNECTING...","host":false})
@@ -206,12 +234,151 @@ func _ui_action(kind: String,value: Variant) -> void:
 				campaign_level = mini(4,campaign_level+1)
 				_start_match(1,campaign_level,Time.get_ticks_msec(),[0])
 			else:_return_to_main()
+		"option_orientation":
+			orientation_mode = {"auto":"portrait","portrait":"landscape","landscape":"auto"}[orientation_mode]
+			_apply_orientation_preference()
+			_save_settings()
+			_show_options()
+		"controller_options":_show_controller_options()
+		"controller_back":_show_options()
+		"controller_sensitivity":
+			pad_input.sensitivity = .5 if pad_input.sensitivity>=2.99 else snappedf(pad_input.sensitivity+.25,.25)
+			_save_settings()
+			_show_controller_options()
+		"controller_deadzone":
+			var next := .10
+			for amount in [.10,.15,.18,.20,.25,.30,.35]:
+				if amount>pad_input.deadzone+.001:next=amount;break
+			pad_input.deadzone=next
+			_save_settings()
+			_show_controller_options()
+		"controller_swap":
+			pad_input.swap_sticks = not pad_input.swap_sticks
+			pad_input.clear_axes()
+			_save_settings()
+			_show_controller_options()
+		"controller_bind":
+			pad_input.capture = str(value)
+			_show("bind_controller",{"action":value})
+		"controller_cancel_bind":
+			pad_input.capture = ""
+			_show_controller_options()
+		"controller_reset":
+			pad_input.bindings = Controller.DEFAULTS.duplicate()
+			pad_input.sensitivity=1.0
+			pad_input.deadzone=.18
+			pad_input.swap_sticks=false
+			_save_settings()
+			_show_controller_options()
+		"controller_help":_show_controller_help()
+		"controller_help_back":
+			if guide_origin=="controller_options":_show_controller_options()
+			elif guide_origin=="shop":_show_shop()
+			else:_show(guide_origin,guide_context)
 		"credits":_show("credits")
 		"quit":_quit_game()
+
+func _apply_orientation_preference() -> void:
+	if OS.has_feature("android"):
+		DisplayServer.screen_set_orientation({"auto":DisplayServer.SCREEN_SENSOR,"portrait":DisplayServer.SCREEN_SENSOR_PORTRAIT,"landscape":DisplayServer.SCREEN_SENSOR_LANDSCAPE}[orientation_mode])
+
+func _hide_keyboard() -> void:
+	if DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):DisplayServer.virtual_keyboard_hide()
+
+func _adapt_orientation() -> void:
+	var wide := get_window().size.x>get_window().size.y
+	var base := Vector2i(960,540) if wide else Vector2i(540,960)
+	if get_window().content_scale_size!=base:get_window().content_scale_size=base
+	camera.keep_aspect=Camera3D.KEEP_HEIGHT if wide else Camera3D.KEEP_WIDTH
+	camera.fov=65 if wide else 78
+	touch_aim = -1
+	if is_instance_valid(hud_ui):hud_ui.schedule_layout()
+
+func _load_controller_settings() -> void:
+	pad_input.sensitivity=clampf(float(settings.get_value("controller","sensitivity",1.0)),.5,3.0)
+	pad_input.deadzone=clampf(float(settings.get_value("controller","deadzone",.18)),.10,.35)
+	pad_input.swap_sticks=bool(settings.get_value("controller","swap_sticks",false))
+	var saved: Variant=settings.get_value("controller","bindings",{})
+	if saved is Dictionary:
+		for action in Controller.DEFAULTS:
+			if saved.has(action) and int(saved[action]) in [0,1,2,3,6,7,8,9,10]:pad_input.bind(action,int(saved[action]))
+
+func _show_controller_options() -> void:
+	var entries: Array=[{"text":"STICK AIM / %d%%" % roundi(pad_input.sensitivity*100),"kind":"controller_sensitivity"},{"text":"DEADZONE / %d%%" % roundi(pad_input.deadzone*100),"kind":"controller_deadzone"},{"text":"SWAP STICKS / %s" % ("ON" if pad_input.swap_sticks else "OFF"),"kind":"controller_swap"}]
+	for action in Controller.DEFAULTS:
+		entries.append({"text":"%s / %s" % ["HARVEST" if action=="suction" else action.to_upper(),pad_input.button_name(pad_input.bindings[action])],"kind":"controller_bind","value":action})
+	entries.append({"text":"RESTORE DEFAULTS","kind":"controller_reset"})
+	entries.append({"text":"BUTTON GUIDE","kind":"controller_help"})
+	_show("controller_options",{"device":pad_input.device_name(),"entries":entries})
+
+func _show_controller_help() -> void:
+	if screen=="controller_help":return
+	guide_origin=screen
+	guide_context=hud_ui.data.duplicate(true)
+	if is_instance_valid(hud_ui.ip):guide_context["ip"]=hud_ui.ip.text
+	if screen=="play":
+		_pause()
+		guide_origin="paused"
+		guide_context={"lan":net.in_match}
+	var stick_guide := "RIGHT STICK / D-PAD: CHOOSE ROUTE\nLEFT STICK: AIM / AUTO FIRE" if pad_input.swap_sticks else "LEFT STICK / D-PAD: CHOOSE ROUTE\nRIGHT STICK: AIM / AUTO FIRE"
+	var guide := "%s\n%s\n%s\nRT: RELOAD / ACTIVE TIMING   LT: 180°\n%s: PAUSE   VIEW: THIS GUIDE\nMENUS: LEFT STICK / D-PAD, SOUTH TO SELECT, EAST TO GO BACK\nRebind buttons and adjust deadzone in Controller Settings." % [stick_guide,pad_input.prompt(),pad_input.shoulder_prompt(),pad_input.button_name(pad_input.bindings["pause"])]
+	_show("controller_help",{"guide":guide})
+
+func _controller_mode(active: bool) -> void:
+	if is_instance_valid(hud_ui):hud_ui.set_controller_mode(active,pad_input.prompt())
+	if active:Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
+
+func _controller_bound() -> void:
+	_save_settings()
+	hud_ui.set_controller_mode(pad_input.active,pad_input.prompt())
+	_show_controller_options()
+
+func _controller_disconnected() -> void:
+	if screen=="play" and not net.in_match:_pause()
+	_notify("CONTROLLER DISCONNECTED / TOUCH CONTROLS READY",5)
+	if screen=="bind_controller":_show_controller_options()
+
+func _controller_look(change: Vector2) -> void:
+	if screen=="play" and not demo and _alive(local_id) and not app_paused:_look(change/maxf(.1,aim_sensitivity))
+
+func _controller_command(kind: String,value: Variant) -> void:
+	if app_paused or quitting:return
+	if screen=="title":
+		if kind in ["confirm","pause"]:_show("main")
+		return
+	if kind=="controls":_show_controller_help();return
+	if screen=="play":
+		if kind=="pause":_pause()
+		elif kind in ["jump","reverse","reload","suction","turn"]:_request_action(kind,value)
+		return
+	if kind=="nav":hud_ui.navigate(value)
+	elif kind=="confirm":hud_ui.activate_focus()
+	elif kind=="pause":
+		if screen=="paused":_show("play")
+		else:hud_ui.activate_focus()
+	elif kind=="cancel":_controller_back()
+
+func _controller_back() -> void:
+	match screen:
+		"main":_show("title")
+		"paused":_show("play")
+		"options":_ui_action("options_back",null)
+		"controller_options":_show_options()
+		"bind_controller":_ui_action("controller_cancel_bind",null)
+		"controller_help":_ui_action("controller_help_back",null)
+		"lobby":_ui_action("leave_room",null)
+		"join":
+			if is_instance_valid(hud_ui.ip) and hud_ui.ip.has_focus():
+				hud_ui.ip.release_focus()
+				_hide_keyboard()
+			else:_show("format",{"size":selected_size})
+		"format":_show("multiplayer")
+		"campaign","multiplayer","credits":_show("main")
 
 func _quit_game(exit_code := 0) -> void:
 	if quitting:return
 	quitting = true
+	if is_instance_valid(pad_input):pad_input.set_physics_process(false)
 	net.close()
 	set_physics_process(false)
 	shot_sound.stop()
@@ -224,10 +391,10 @@ func _cycle_volume(value: float) -> float:
 
 func _update_audio() -> void:
 	if is_instance_valid(shot_sound):shot_sound.volume_db = -80 if sound_volume==0 else -12+linear_to_db(sound_volume)
-	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits"]))
+	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"]))
 
 func _show_options() -> void:
-	_show("options",{"sensitivity_pct":roundi(aim_sensitivity*100),"volume":sound_volume,"music":music_volume,"ambience":ambience_volume,"invert":invert_aim,"motion":camera_motion})
+	_show("options",{"sensitivity_pct":roundi(aim_sensitivity*100),"volume":sound_volume,"music":music_volume,"ambience":ambience_volume,"invert":invert_aim,"motion":camera_motion,"orientation":orientation_mode.to_upper()})
 
 func _refresh_lobby() -> void:
 	if not net.active or net.in_match:return
@@ -323,6 +490,7 @@ func _setup_round() -> void:
 	player.collision_mask = 1
 	camera.position = Vector3(0,1.75,0)
 	camera.rotation = Vector3.ZERO
+	_adapt_orientation()
 	gun.visible = true
 	for index in range(7):
 		var node: int = [6,10,14,18,20,24,2][index]
@@ -418,6 +586,11 @@ func _replace_departed(id: int) -> void:
 	_notify("A disconnected player is now controlled by a bot.",4)
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		pad_input.handle(event)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventScreenTouch or (event is InputEventMouseButton and event.pressed):pad_input.set_active(false)
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			if screen == "title":
@@ -507,6 +680,7 @@ func _pause() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:
 		app_paused = true
+		if is_instance_valid(pad_input):pad_input.clear_axes()
 		if screen=="play":_pause()
 		if is_instance_valid(shot_sound):shot_sound.stop()
 		_update_audio()
@@ -521,8 +695,17 @@ func _set_animations(active: bool) -> void:
 
 func _physics_process(delta: float) -> void:
 	if app_paused:return
+	# A 180-degree phone rotation can move the cutout without changing window size.
+	if OS.has_feature("android"):
+		safe_area_check_left-=delta
+		if safe_area_check_left<=0:
+			safe_area_check_left=.5
+			var area := DisplayServer.get_display_safe_area()
+			if area!=last_device_safe_area:
+				last_device_safe_area=area
+				_adapt_orientation()
 	toast_left = maxf(0,toast_left-delta)
-	if not demo and not net.in_match and screen in ["paused","options","credits"]:
+	if not demo and not net.in_match and screen in ["paused","options","credits","controller_options","bind_controller","controller_help"]:
 		phase_wall_time = Time.get_ticks_usec()
 		_render_hud(delta)
 		return

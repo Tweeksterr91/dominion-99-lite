@@ -21,6 +21,7 @@ var launch_position := Vector3.ZERO
 func _initialize() -> void:call_deferred("start")
 func start() -> void:
  hosting = "host" in OS.get_cmdline_user_args()
+ root.size=Vector2i(1206,540) if hosting else Vector2i(540,1206)
  game = load("res://main.tscn").instantiate()
  root.add_child(game)
  current_scene = game
@@ -91,7 +92,10 @@ func _process(_delta: float) -> bool:
   for body in game.entities.values():
    if body.get_meta("role")=="minion":variant_seen[body.get_meta("subtype")]=true
   if phase==0 and elapsed>.7 and not reversed:
-   game._request_action("reverse")
+   var press:=InputEventJoypadButton.new()
+   press.device=99;press.button_index=game.pad_input.bindings["reverse"];press.pressed=true
+   game._input(press)
+   press.pressed=false;game._input(press)
    reversed=true
   if phase==1 and not buy_sent:
    game._request_action("buy","needle")

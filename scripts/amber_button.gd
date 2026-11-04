@@ -3,6 +3,7 @@ const Glyph = preload("res://scripts/ui_glyph.gd")
 var glyph := ""
 var selected := false
 var circled := false
+var controller_focused := false
 var accent := Color("edb45d")
 var hint := ""
 
@@ -17,8 +18,11 @@ func _ready() -> void:
 	add_theme_constant_override("outline_size",2)
 
 func _draw() -> void:
+	if controller_focused:
+		draw_line(Vector2(1,4),Vector2(1,size.y-4),accent,2,true)
+		draw_line(Vector2(size.x-1,4),Vector2(size.x-1,size.y-4),accent,2,true)
 	if glyph.is_empty():
-		draw_line(Vector2(0,size.y-2),Vector2(size.x,size.y-2),Color(accent,0.24),1,true)
+		draw_line(Vector2(0,size.y-2),Vector2(size.x,size.y-2),Color(accent,1.0 if controller_focused else 0.24),2.5 if controller_focused else 1.0,true)
 		return
 	var color := Color(accent,0.22 if disabled else 1.0)
 	if circled:
