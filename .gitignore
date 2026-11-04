@@ -6,3 +6,5 @@ builds/
 *.jks
 .godot/export_credentials.cfg
 *.import
+!assets/textures/**/*.import
+!assets/models/*.png.import

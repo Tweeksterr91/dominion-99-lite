@@ -471,6 +471,12 @@ func _spawn_bot(node: int) -> void:
 	col.shape = shape
 	col.position.y = 0.9
 	enemy.add_child(col)
+	var shoulder_hitbox := CollisionShape3D.new()
+	var torso := BoxShape3D.new()
+	torso.size = Vector3(1.25, 0.55, 0.55)
+	shoulder_hitbox.shape = torso
+	shoulder_hitbox.position.y = 1.16
+	enemy.add_child(shoulder_hitbox)
 	art.build_enemy(enemy)
 	if enemy.has_meta("animation"):
 		enemy.get_meta("animation").active = running

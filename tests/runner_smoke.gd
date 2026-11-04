@@ -95,6 +95,9 @@ func verify() -> void:
  game.fire_left = 0
  game._tick_auto_fire()
  check(game.ammo == 11 and bot.get_meta("hp") == 66, "Automatic weapon path damages enemy")
+ game.camera.look_at(bot.global_position + Vector3(0.5, 1.16, 0))
+ check(game._target_enemy() == bot, "Target volume covers the imported creature's wider shoulders")
+ game.camera.rotation = Vector3.ZERO
  game.camera.rotation.y = 0.8
  check(game._target_enemy() == null, "No target lock away from enemy")
  var prior_ammo = game.ammo

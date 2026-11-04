@@ -5,6 +5,7 @@ First visual foundation toward a more realistic dark sci-fi game.
 ## Graphics and animation
 
 - Scanned 1K color, normal, and roughness maps for stone, masonry, ground, bark, and sand, with smooth filtering and world-space tiling.
+- Surface and character textures have preserved mipmapped, mobile-compressed imports. The optimized APK is approximately 45 MB.
 - An imported textured creature replaces the rigid box-built enemies. Its real skeleton plays running, idle, and jumping clips; the model is an adapted Sinbad asset by Zi Ye.
 - A newly modeled, beveled sidearm with barrel details, a grip, a glove, recoil, running movement, and automatic-reload tilt.
 - Rounded columns and trunks, smoother dunes, and individual leaf-shaped foliage instead of solid canopy blobs.
