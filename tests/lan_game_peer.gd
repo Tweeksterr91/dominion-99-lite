@@ -12,6 +12,11 @@ var hurt := false
 var disconnected := false
 var received := 0
 var last_phase := -1
+var gold_seen := false
+var gold_placed := false
+var reversed := false
+var reverse_received := false
+var variant_seen := {}
 var launch_position := Vector3.ZERO
 func _initialize() -> void:call_deferred("start")
 func start() -> void:
@@ -23,13 +28,15 @@ func start() -> void:
  game.net.connection_error.connect(func(message):push_error(message);quit(1))
  game.net.launch.connect(func(_config):started_at=Time.get_ticks_msec();launch_position=game.player.position)
  game.net.state_received.connect(func(_packet):received+=1)
+ game.net.action_received.connect(func(_id,kind,_value,_sequence):
+  if kind=="reverse":reverse_received=true)
  game.net.fighter_disconnected.connect(func(_fid):disconnected=true)
  if hosting:
   assert(game.net.host(4,0,27809)==OK)
  else:
   assert(game.net.join_room("127.0.0.1",27809)==OK)
 func _process(_delta: float) -> bool:
- if game==null:return false
+ if game==null or game.quitting:return false
  var now := Time.get_ticks_msec()
  if now>deadline:
   push_error("LAN test timed out")
@@ -38,14 +45,14 @@ func _process(_delta: float) -> bool:
  if hosting and disconnected:
   assert(not game.rules.players[4]["human"])
   print("PASS: LAN host: 4v4, ready, shopping, shared reveal, hunt, disconnect bot takeover")
-  quit()
+  game._quit_game()
   return false
  if not game.net.in_match:
   if hosting:
    if disconnected:
     assert(not game.rules.players[4]["human"])
     print("PASS: LAN host: 4v4, ready, shopping, shared reveal, hunt, disconnect bot takeover")
-    quit()
+    game._quit_game()
    elif game.net.can_start():game.net.start_match(717)
   elif game.net.human_slots.size()==2 and not ready_sent:
    ready_sent = true
@@ -58,8 +65,12 @@ func _process(_delta: float) -> bool:
   print("LAN ","host" if hosting else "client"," phase ",phase," slot ",game.local_id)
   last_phase = phase
  if hosting:
+  if phase==0 and not gold_placed:
+   game.cloud.spawn(Vector3(0,2,0),15,-1,true)
+   gold_placed=true
   if elapsed>2 and not switched_shop:
    assert(game.rails[4].last_input>0,"Remote aiming reaches host")
+   assert(reverse_received,"Remote reversal reaches host")
    game.rules.credit_essence(4,140)
    game.rules.remaining = 0.001
    switched_shop = true
@@ -75,6 +86,13 @@ func _process(_delta: float) -> bool:
    hurt = true
  else:
   assert(game.local_id==4,"Guest is on opposing team")
+  for orb in game.cloud.orbs.values():
+   gold_seen = gold_seen or orb["gold"]
+  for body in game.entities.values():
+   if body.get_meta("role")=="minion":variant_seen[body.get_meta("subtype")]=true
+  if phase==0 and elapsed>.7 and not reversed:
+   game._request_action("reverse")
+   reversed=true
   if phase==1 and not buy_sent:
    game._request_action("buy","needle")
    game._request_action("ready")
@@ -82,11 +100,13 @@ func _process(_delta: float) -> bool:
   if phase==3 and elapsed>9:
    assert(seen.has_all([0,1,2,3]),"All phases synchronized")
    assert(received>70,"Continuous snapshots")
+   assert(gold_seen and variant_seen.has_all(["scavenger","stalker","brute"]),"Guest receives gold and all minion variants")
+   assert(reversed,"Guest predicts reverse")
    assert(game.rules.players[4]["weapon"]=="needle" and game.rules.players[4]["souls"]==60,"Host validates and syncs purchase")
    assert(game.rules.rewards.size()==8,"Guest sees every player's gift")
    assert(game.player.position.distance_to(launch_position)>1,"Guest predicts actual movement")
    assert(game.entities.has(0) and game.entities.size()>=7,"Guest receives all fighters")
-   print("PASS: LAN client: remote input, ",received," snapshots, authoritative purchase, all phases, 8 rolls, movement")
+   print("PASS: LAN client: remote input, ",received," snapshots, authoritative purchase, all phases, 8 rolls, reversal, gold and variants, movement")
    game.net.close()
-   quit()
+   game._quit_game()
  return false

@@ -16,23 +16,25 @@ func _ready() -> void:
 	mesh.rings = 3
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color("69cfff")
+	mat.albedo_color = Color.WHITE
+	mat.vertex_color_use_as_albedo = true
 	cloud.material_override = mat
 	cloud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cloud.multimesh = MultiMesh.new()
+	cloud.multimesh.use_colors = true
 	cloud.multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	cloud.multimesh.mesh = mesh
 	cloud.multimesh.instance_count = MAX_ORBS*3
 	cloud.multimesh.visible_instance_count = 0
 	add_child(cloud)
 
-func spawn(pos: Vector3,value := 5,id := -1) -> int:
+func spawn(pos: Vector3,value := 5,id := -1,gold := false) -> int:
 	if orbs.size() >= MAX_ORBS:return -1
 	if id < 0:
 		id = next_id
 		next_id += 1
 	var area := Area3D.new()
-	area.collision_layer = 8
+	area.collision_layer = 64 if gold else 8
 	area.collision_mask = 0
 	area.set_meta("orb",id)
 	var col := CollisionShape3D.new()
@@ -42,7 +44,7 @@ func spawn(pos: Vector3,value := 5,id := -1) -> int:
 	area.add_child(col)
 	add_child(area)
 	area.position = pos
-	orbs[id] = {"area":area,"pos":pos,"anchor":pos,"value":value,"owner":-1,"life":25.0}
+	orbs[id] = {"area":area,"pos":pos,"anchor":pos,"value":value,"owner":-1,"life":-1.0 if gold else 25.0,"gold":gold}
 	return id
 
 func remove(id: int) -> void:
@@ -57,7 +59,7 @@ func clear() -> void:
 	if is_instance_valid(cloud):cloud.multimesh.visible_instance_count = 0
 
 func destroy(id: int) -> bool:
-	if not orbs.has(id):return false
+	if not orbs.has(id) or orbs[id]["gold"]:return false
 	remove(id)
 	denied.emit()
 	return true
@@ -77,8 +79,8 @@ func tick(delta: float,collectors: Dictionary,authoritative: bool) -> void:
 	for id in orbs.keys():
 		var orb: Dictionary = orbs[id]
 		if authoritative:
-			orb["life"] -= delta
-			if orb["life"] <= 0:
+			if not orb["gold"]:orb["life"] -= delta
+			if not orb["gold"] and orb["life"] <= 0:
 				remove(id)
 				continue
 			var owner: int = orb["owner"]
@@ -93,12 +95,15 @@ func tick(delta: float,collectors: Dictionary,authoritative: bool) -> void:
 				orb["owner"] = -1
 				orb["pos"] = Vector3(orb["anchor"])+Vector3(0,sin(elapsed*2+id)*0.1,0)
 			orb["area"].position = orb["pos"]
+		var color := Color("ffd06a") if orb["gold"] else Color("69cfff")
 		var pos: Vector3 = orb["pos"]
-		cloud.multimesh.set_instance_transform(index,Transform3D(Basis.IDENTITY,pos))
+		cloud.multimesh.set_instance_transform(index,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*(1.35 if orb["gold"] else 1.0)),pos))
+		cloud.multimesh.set_instance_color(index,color)
 		index += 1
 		for side in [-1.0,1.0]:
 			var offset := Vector3(sin(elapsed*3+id)*0.15*side,cos(elapsed*3+id)*0.12,cos(elapsed*2+id)*0.12*side)
 			cloud.multimesh.set_instance_transform(index,Transform3D(Basis.IDENTITY.scaled(Vector3.ONE*0.36),pos+offset))
+			cloud.multimesh.set_instance_color(index,color)
 			index += 1
 	cloud.multimesh.visible_instance_count = index
 
@@ -106,7 +111,7 @@ func pack() -> Array:
 	var result: Array = []
 	for id in orbs:
 		var orb: Dictionary = orbs[id]
-		result.append([id,orb["pos"],orb["value"],orb["owner"]])
+		result.append([id,orb["pos"],orb["value"],orb["owner"],orb["gold"]])
 	return result
 
 func apply_snapshot(data: Array) -> void:
@@ -114,7 +119,7 @@ func apply_snapshot(data: Array) -> void:
 	for item in data:
 		var id := int(item[0])
 		seen.append(id)
-		if not orbs.has(id):spawn(item[1],int(item[2]),id)
+		if not orbs.has(id):spawn(item[1],int(item[2]),id,bool(item[4]))
 		orbs[id]["pos"] = item[1]
 		orbs[id]["owner"] = int(item[3])
 		orbs[id]["area"].position = item[1]

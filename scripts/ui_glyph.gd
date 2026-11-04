@@ -32,8 +32,16 @@ static func paint(c: CanvasItem, kind: String, rect: Rect2, color: Color, width 
 			line(c,[[0.42,0.57],[0.25,0.77],[0.10,0.80]],rect,color,width)
 			line(c,[[0.28,0.90],[0.64,0.90]],rect,Color(color,0.35),1)
 		"soul", "essence":
-			line(c,[[0.57,0.08],[0.31,0.32],[0.22,0.52],[0.28,0.72],[0.48,0.90],[0.69,0.71],[0.76,0.48],[0.66,0.27],[0.57,0.08]],rect,color,width)
-			c.draw_circle(center+Vector2(0,radius*0.03),radius*0.12,color,true,-1,true)
+			# Swept flame, split tail and a spectral mask, all original vector art.
+			line(c,[[.60,.03],[.49,.23],[.64,.34],[.72,.22],[.81,.47],[.79,.65],[.66,.80],[.57,.96],[.48,.80],[.29,.85],[.34,.68],[.20,.55],[.22,.38],[.36,.17],[.35,.37],[.46,.33],[.60,.03]],rect,color,width)
+			line(c,[[.37,.48],[.46,.51],[.43,.58]],rect,color,width*.8)
+			line(c,[[.65,.48],[.56,.51],[.59,.58]],rect,color,width*.8)
+			line(c,[[.48,.66],[.53,.62],[.57,.67]],rect,color,width*.7)
+		"reverse":
+			c.draw_arc(rect.position+rect.size*Vector2(.50,.47),radius*.28,PI,TAU,32,color,width,true)
+			line(c,[[.78,.46],[.78,.77]],rect,color,width)
+			line(c,[[.22,.46],[.22,.70]],rect,color,width)
+			line(c,[[.08,.55],[.22,.72],[.37,.55]],rect,color,width)
 		"life":
 			c.draw_arc(center-Vector2(0,radius*0.12),radius*0.24,PI,TAU,20,color,width,true)
 			line(c,[[0.26,0.38],[0.26,0.55],[0.39,0.64],[0.61,0.64],[0.74,0.55],[0.74,0.38]],rect,color,width)

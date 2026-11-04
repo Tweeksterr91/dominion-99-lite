@@ -6,6 +6,8 @@ config/name="Dominion '99 (Lite)"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.015,0.02,0.03,1)
 
 [display]
 window/size/viewport_width=540

@@ -36,6 +36,16 @@ func choose(course: RefCounted, key: String) -> void:
 	elif routes.has(key):
 		queued = routes[key]
 
+func reverse(body: CharacterBody3D) -> void:
+	var previous := origin
+	origin = target
+	target = previous
+	queued = -1
+	blocked = 0
+	body.rotation.y = wrapf(body.rotation.y+PI,-PI,PI)
+	body.velocity.x = -body.velocity.x
+	body.velocity.z = -body.velocity.z
+
 func jump(body: CharacterBody3D) -> void:
 	if jumps >= 2 or (jumps == 0 and not body.is_on_floor() and coyote <= 0):
 		return

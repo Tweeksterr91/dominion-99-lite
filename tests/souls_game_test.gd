@@ -45,7 +45,7 @@ func verify() -> void:
  var minion
  for body in g.entities.values():
   body.position = Vector3(100,0,100)
-  if body.get_meta("role")=="minion":minion=body
+  if body.get_meta("role")=="minion" and body.get_meta("subtype")=="scavenger":minion=body
  g.player.position = Vector3(0,.05,22)
  g.player.rotation = Vector3.ZERO
  minion.position = Vector3(0,0,18)
@@ -132,6 +132,8 @@ func verify() -> void:
  check(g.rules.players[0]["lives"]==5 and g.rules.round_index==2,"Next round restores five lives")
  print("FAIL" if failed else "PASS: portrait HUD, manual/active reload, PvP protection, steal/deny/credit essence, shop, reveal, respawn, pause")
  g.shot_sound.stop()
+ g.soundscape.shutdown()
+ await create_timer(.15).timeout
  g.queue_free()
  await process_frame
  await process_frame

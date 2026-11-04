@@ -35,3 +35,7 @@ The images in `biomes/` are in-engine captures with bots positioned for visibili
 ## Souls & Ash interface (v0.4.0)
 
 Use transparent screen-edge statistics, Rajdhani typography, warm amber vector navigation, and icy blue essence accents. The center remains open for aim and the active reload ring. Jump uses an original jumping-person glyph below the ahead arrow. Menus layer typography over a running in-engine demo; match shopping and shared rolls freeze combat behind a subtle full-screen gradient. The open essence glove is an original Blender asset with a blue palm focus. Full asset notices remain in ASSET_CREDITS.md.
+
+## Sentinels & Gold (v0.5.0)
+
+Players use the original Sentinel: rounded graphite ceramic armor, enclosed respirator helmet, luminous visor, titanium joints, and team enamel. A restrained inverted-hull outline identifies blue/red teams and remains occluded by walls. It has an original skeleton and three original animation clips. Smaller Sinbad-derived minions use muted green/violet/rust variants; the rare Gilded Revenant gains a gold crown and crystals. Indestructible gold essence contrasts with deniable blue essence. Jump and harvest gain complete rings; a circular U-turn sits below jump. Five quiet synthesized minor-key industrial soundscapes and filtered brown noise support the dark environments without competing with combat feedback.

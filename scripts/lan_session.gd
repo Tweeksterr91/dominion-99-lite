@@ -6,7 +6,7 @@ signal state_received(state: Dictionary)
 signal action_received(fighter: int, kind: String, value: Variant, sequence: int)
 signal connection_error(message: String)
 signal fighter_disconnected(fighter: int)
-const PROTOCOL := 5
+const PROTOCOL := 6
 const PORT := 27799
 var active := false
 var in_match := false
@@ -234,7 +234,7 @@ func _action(kind: String, value: Variant, seq: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if not peers.has(sender) or seq <= int(last_sequence.get(sender, 0)):
 		return
-	if kind not in ["aim", "turn", "jump", "reload", "suction", "buy", "ready"]:
+	if kind not in ["aim", "turn", "jump", "reverse", "reload", "suction", "buy", "ready"]:
 		return
 	var now := Time.get_ticks_msec()
 	if now - int(rate_time.get(sender, 0)) > 1000:

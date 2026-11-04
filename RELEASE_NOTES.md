@@ -1,18 +1,16 @@
-# v0.4.0 — Souls & Ash / LAN foundation
+# v0.5.0 — Sentinels & Gold
 
-Portrait auto-runner combat now has a complete five-round match loop and local Wi-Fi/direct-IP multiplayer.
+- Full circles around the jump and harvest buttons; a new spectral-flame soul icon.
+- Godot splash image disabled. Android's native startup may briefly show the game's app icon.
+- New original armored Sentinel player model with its own skeleton and running, idle, and jump clips. Players are larger than minions; blue/red armor accents and wall-respecting blue/red outlines identify teams.
+- Circular 180° U-turn button directly below jump; reverses movement without teleporting. Desktop shortcut: Q. Works over LAN with local prediction and host validation.
+- Default aim sensitivity increased to 180%. Options offer 50–300% adjustment in 10% steps, reset, and saved preferences. Earlier low/normal/high choices migrate to faster equivalents.
+- Five original ambient industrial/techno music loops, one per biome, plus a quiet brown-noise layer. Separate saved effects/music/ambience volumes and mute; offline pause suspends audio.
+- Scavenger, fast/light Stalker, and slow/heavy Brute minions have different health, movement and attacks.
+- Rare Gilded Revenant treasure minion appears once per collection phase at a random time, flees players, and drops 90 gold souls—six times an ordinary minion. Gold can be harvested or stolen by either team, cannot be destroyed, does not waste denial ammunition, and remains until collection ends.
 
-- Five lives per player, restored each round; 2:45 collection → up to 1:00 shop → shared roll → 2:45 hunting.
-- PvE minions drop blue essence over their bodies. Pull it with an extending hand, steal it, or shoot it to deny souls.
-- Three weapon profiles and health/shield/damage/reload upgrades; one subtle shared RNG benefit per player per round.
-- Clear portrait HUD: amber arrows, jumping-person icon below ahead, corner lives/souls/frags, health/shield and ammo, active reload ring. Empty magazines wait for a tap to start reloading.
-- Live title demo, main menu, five-map bot campaign, saved options, multiplayer formats 1v1 through 4v4.
-- Actual ENet phone-hosted LAN rooms on UDP 27799, ready checks, bot filling, host authority, local movement prediction, compressed snapshot fragments, and disconnected guest bot takeover.
+The five-round collection/shop/shared-roll/hunting flow remains. LAN protocol updated: **all participating phones must install v0.5.0**. Same application ID and signing certificate; versionCode 8. Install as an update over the previous APK.
 
-Install over the previous APK. Same application ID and signing certificate; versionCode 7. Connect phones to the same Wi-Fi or hotspot, host a room, enter its displayed IP on the other phone, ready up, then start.
+Validated: portrait control layout, actual touch navigation, precise 180° reversal and continued collision movement, saved sensitivity, animated Sentinel joints and team outline materials, minion stats/speed, scheduled treasure spawn, gold denial immunity and collection by both teams, looping audio/mute, existing combat/reload/essence/shop/respawn rules, real collision jumps/drop, and two-process 4v4 LAN with reversals, minion variants and gold snapshots. Physical Android multiplayer, audio mix and OnePlus 12R frame rate still need phone testing. Portrait, fixed 60 FPS cap.
 
-Validated: match rules/economy, portrait HUD, multi-touch, actual PvE aiming/fire and drops, tap/active reload, essence stealing/denial/credit, shop/reveal/respawn/pause, real-collision jumps/drop/turns, and two-process 4v4 LAN through shopping and hunting. Physical Android multiplayer and OnePlus 12R frame rate still need device testing. Fixed 60 FPS cap; no frame-rate toggle.
-
-This is a development prototype. Campaign is a sequence of bot arena matches; weapon profiles share the current modeled sidearm. No Internet matchmaking or live-match rejoin. Keep the host game open.
-
-Original code/art MIT; adapted Sinbad creature by Zi Ye CC BY-SA 3.0; ambientCG/Poly Haven CC0; Rajdhani SIL OFL. Full notices: ASSET_CREDITS.md. Gameplay screenshots/video containing Sinbad are CC BY-SA 3.0.
+Original Sentinel, rig/animations, audio, controls and code: MIT. Adapted Sinbad minions by Zi Ye: CC BY-SA 3.0. ambientCG/Poly Haven: CC0. Rajdhani: SIL OFL. Full notices in ASSET_CREDITS.md. Screenshots/video containing Sinbad are CC BY-SA 3.0.

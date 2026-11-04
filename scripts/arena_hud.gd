@@ -15,6 +15,7 @@ var labels: Dictionary = {}
 var routes: Dictionary = {}
 var buttons: Array[Button] = []
 var jump: Button
+var reverse: Button
 var down: Button
 var essence: Button
 var reticle: Control
@@ -91,11 +92,16 @@ func _ready() -> void:
 		_place(button,Vector2(0.5,1),Vector2(x,-305),Vector2(72,72))
 		routes[key] = button
 	jump = _button(combat,"",Vector2.ZERO,Vector2(74,74),"jump",null,"jump")
+	jump.circled = true
 	_place(jump,Vector2(0.5,1),Vector2(-37,-219),Vector2(74,74))
+	reverse = _button(combat,"",Vector2.ZERO,Vector2(58,58),"reverse",null,"reverse")
+	reverse.circled = true
+	_place(reverse,Vector2(0.5,1),Vector2(-29,-137),Vector2(58,58))
 	down = _button(combat,"",Vector2.ZERO,Vector2(52,52),"route","down","down")
 	_place(down,Vector2(1,1),Vector2(-70,-215),Vector2(52,52))
 	essence = _button(combat,"",Vector2.ZERO,Vector2(64,64),"essence",null,"essence")
 	essence.accent = Color("68c8fb")
+	essence.circled = true
 	_place(essence,Vector2(0,0.62),Vector2(12,-32),Vector2(64,64))
 	labels["route"] = _label(combat,"",Vector2.ZERO,Vector2(420,30),14)
 	_place(labels["route"],Vector2(0.5,1),Vector2(-210,-342),Vector2(420,30))
@@ -277,10 +283,18 @@ func show_screen(value: String,context: Dictionary) -> void:
 			start.disabled = context.get("host",false) and not context.get("can_start",false)
 			_footer("LEAVE ROOM","leave_room")
 		"options":
-			_menu_line("AIM / %s" % context.get("sensitivity_name","NORMAL"),0.32,"option_sensitivity")
-			_menu_line("SOUND / %d%%" % int(float(context.get("volume",0.8))*100),0.43,"option_volume")
-			_menu_line("INVERT AIM / %s" % ("ON" if context.get("invert",false) else "OFF"),0.54,"option_invert")
-			_menu_line("CAMERA MOTION / %s" % ("ON" if context.get("motion",true) else "MINIMAL"),0.65,"option_motion")
+			_info("AIM SENSITIVITY / %d%%" % context.get("sensitivity_pct",180),0.265)
+			var minus := _button(overlay,"−",Vector2.ZERO,Vector2(82,48),"sensitivity_adjust",-0.1)
+			_place(minus,Vector2(.5,.335),Vector2(-170,0),Vector2(82,48))
+			var reset := _button(overlay,"RESET",Vector2.ZERO,Vector2(140,48),"sensitivity_reset")
+			_place(reset,Vector2(.5,.335),Vector2(-70,0),Vector2(140,48))
+			var plus := _button(overlay,"+",Vector2.ZERO,Vector2(82,48),"sensitivity_adjust",0.1)
+			_place(plus,Vector2(.5,.335),Vector2(88,0),Vector2(82,48))
+			_menu_line("EFFECTS / %d%%" % roundi(float(context.get("volume",0.8))*100),0.43,"option_volume")
+			_menu_line("MUSIC / %d%%" % roundi(float(context.get("music",0.35))*100),0.52,"option_music")
+			_menu_line("AMBIENCE / %d%%" % roundi(float(context.get("ambience",0.5))*100),0.61,"option_ambience")
+			_menu_line("INVERT AIM / %s" % ("ON" if context.get("invert",false) else "OFF"),0.70,"option_invert")
+			_menu_line("CAMERA MOTION / %s" % ("ON" if context.get("motion",true) else "MINIMAL"),0.79,"option_motion")
 			_footer("BACK","options_back")
 		"paused":
 			_menu_line("RESUME",0.35,"resume")
@@ -316,7 +330,7 @@ func show_screen(value: String,context: Dictionary) -> void:
 			_menu_line("CONTINUE",0.74,"results_continue")
 			_footer("MAIN MENU","abandon")
 		"credits":
-			var credit := _info("Sinbad creature: © Zi Ye / CC BY-SA 3.0\ncreativecommons.org/licenses/by-sa/3.0/\nTextures: ambientCG / CC0\nSky: Poly Haven / CC0\nRajdhani font: Indian Type Foundry / SIL OFL\nOther art and code: Dominion '99\nFull notices: repository ASSET_CREDITS.md",0.31)
+			var credit := _info("Sinbad creature: © Zi Ye / CC BY-SA 3.0\ncreativecommons.org/licenses/by-sa/3.0/\nTextures: ambientCG / CC0\nSky: Poly Haven / CC0\nRajdhani font: Indian Type Foundry / SIL OFL\nSentinel player, music, hand and icons: original MIT\nOther art and code: Dominion '99\nFull notices: repository ASSET_CREDITS.md",0.31)
 			credit.size.y = 340
 			_footer("BACK","main")
 
@@ -361,6 +375,8 @@ func update_view(view: Dictionary,delta: float) -> void:
 		labels["tap"].modulate.a = 0.65+0.25*sin(time*2)
 	if view.is_empty():return
 	labels["lives"].text = str(view.get("lives",5))
+	labels["life_caption"].text = "BLUE / LIVES" if view.get("team",0)==0 else "RED / LIVES"
+	labels["life_caption"].modulate = Color("48a9ff") if view.get("team",0)==0 else Color("ff4f62")
 	labels["souls"].text = str(view.get("souls",0))
 	labels["frags"].text = str(view.get("frags",0))
 	var seconds := ceili(float(view.get("remaining",165)))
@@ -381,6 +397,7 @@ func update_view(view: Dictionary,delta: float) -> void:
 	labels["reload"].text = view.get("reload_hint","")
 	reticle.locked = view.get("locked",false)
 	reticle.essence = view.get("essence_target",false)
+	reticle.gold = view.get("essence_gold",false)
 	reticle.progress = view.get("reload_progress",-1.0)
 	reticle.empty = view.get("ammo",1)==0
 	reticle.attempt_used = view.get("reload_used",false)
@@ -393,6 +410,7 @@ func update_view(view: Dictionary,delta: float) -> void:
 		button.selected = key == view.get("queued","")
 		button.hint = choices.get(key,"")
 		button.queue_redraw()
+	reverse.disabled = not view.get("alive",true)
 	jump.disabled = view.get("jumps",0)>=2 or not view.get("alive",true)
 	jump.hint = "2x" if view.get("jumps",0)==1 else ""
 	jump.queue_redraw()

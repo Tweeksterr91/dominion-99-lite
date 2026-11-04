@@ -2,6 +2,7 @@ extends Button
 const Glyph = preload("res://scripts/ui_glyph.gd")
 var glyph := ""
 var selected := false
+var circled := false
 var accent := Color("edb45d")
 var hint := ""
 
@@ -20,7 +21,11 @@ func _draw() -> void:
 		draw_line(Vector2(0,size.y-2),Vector2(size.x,size.y-2),Color(accent,0.24),1,true)
 		return
 	var color := Color(accent,0.22 if disabled else 1.0)
-	var icon_size := minf(size.x,size.y)*0.78
+	if circled:
+		var radius := minf(size.x,size.y)*0.46
+		draw_arc(size*0.5,radius,0,TAU,72,Color(0,0,0,color.a*0.7),4.5,true)
+		draw_arc(size*0.5,radius,0,TAU,72,Color(accent,color.a*0.85),1.8,true)
+	var icon_size := minf(size.x,size.y)*(0.62 if circled else 0.78)
 	var box := Rect2((size-Vector2.ONE*icon_size)*0.5,Vector2.ONE*icon_size)
 	Glyph.paint(self,glyph,box,color,3.3 if glyph in ["left","ahead","right","down"] else 2.6)
 	if selected:

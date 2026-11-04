@@ -1,6 +1,7 @@
 extends Control
 var locked := false
 var essence := false
+var gold := false
 var hit := false
 var progress := -1.0
 var empty := false
@@ -8,7 +9,7 @@ var attempt_used := false
 var success := 0.0
 func _draw() -> void:
 	var center := size*0.5
-	var color := Color("64cfff") if essence else (Color("edb45d") if locked or hit else Color("f2eee6"))
+	var color := Color("ffd06a") if gold else Color("64cfff") if essence else (Color("edb45d") if locked or hit else Color("f2eee6"))
 	var gap := 6.0 if locked else 10.0
 	for d in [Vector2.LEFT,Vector2.RIGHT,Vector2.UP,Vector2.DOWN]:
 		draw_line(center+d*gap,center+d*(gap+7),Color(0,0,0,0.65),4,true)

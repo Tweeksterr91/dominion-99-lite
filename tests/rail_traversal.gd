@@ -38,7 +38,7 @@ func verify() -> void:
    if r.origin==b:break
   test(r.origin==b,"Traverses "+str(specification))
  print("FAIL" if failed else "PASS: host/client shared movement, left turn, single/double jump, drop with real collision")
- quit(1 if failed else 0)
+ g._quit_game(1 if failed else 0)
 func test(ok: bool,detail: String) -> void:
  if not ok:
   failed = true

@@ -1,4 +1,6 @@
 extends "res://scripts/runner.gd"
+const Minions = preload("res://scripts/minion_types.gd")
+const Soundscape = preload("res://scripts/map_soundscape.gd")
 const Rules = preload("res://scripts/match_rules.gd")
 const Rail = preload("res://scripts/rail_motion.gd")
 const ArenaHUD = preload("res://scripts/arena_hud.gd")
@@ -21,7 +23,11 @@ var selected_size := 1
 var campaign_level := 0
 var campaign_unlocked := 1
 var campaign_match := true
-var sensitivity_index := 1
+var aim_sensitivity := 1.8
+var music_volume := 0.35
+var ambience_volume := 0.5
+var soundscape: Node
+var treasure_spawn_left := 90.0
 var sound_volume := 0.8
 var invert_aim := false
 var camera_motion := true
@@ -49,12 +55,18 @@ var hand_amount := 0.0
 var settings := ConfigFile.new()
 var combat_random := RandomNumberGenerator.new()
 var shop_signature := ""
+var quitting := false
 
 func _ready() -> void:
 	Engine.max_fps = 60
 	_load_settings()
 	_make_player()
+	var collider: CollisionShape3D = player.get_child(0)
+	collider.shape.height = 2.1
+	collider.position.y = 1.05
 	_make_audio()
+	soundscape = Soundscape.new()
+	add_child(soundscape)
 	shot_sound.volume_db = -12+linear_to_db(maxf(0.001,sound_volume))
 	net = LanSession.new()
 	net.name = "LanSession"
@@ -82,7 +94,9 @@ func _ready() -> void:
 
 func _load_settings() -> void:
 	settings.load("user://dominion_settings.cfg")
-	sensitivity_index = clampi(int(settings.get_value("controls","sensitivity",1)),0,2)
+	aim_sensitivity = clampf(float(settings.get_value("controls","sensitivity_scale",[1.2,1.8,2.5][clampi(int(settings.get_value("controls","sensitivity",1)),0,2)])),0.5,3.0)
+	music_volume = clampf(float(settings.get_value("audio","music",0.35)),0,1)
+	ambience_volume = clampf(float(settings.get_value("audio","ambience",0.5)),0,1)
 	sound_volume = clampf(float(settings.get_value("audio","volume",0.8)),0,1)
 	invert_aim = settings.get_value("controls","invert",false)
 	camera_motion = settings.get_value("controls","motion",true)
@@ -90,7 +104,9 @@ func _load_settings() -> void:
 	last_ip = settings.get_value("network","last_ip","")
 
 func _save_settings() -> void:
-	settings.set_value("controls","sensitivity",sensitivity_index)
+	settings.set_value("controls","sensitivity_scale",aim_sensitivity)
+	settings.set_value("audio","music",music_volume)
+	settings.set_value("audio","ambience",ambience_volume)
 	settings.set_value("controls","invert",invert_aim)
 	settings.set_value("controls","motion",camera_motion)
 	settings.set_value("audio","volume",sound_volume)
@@ -109,6 +125,7 @@ func _show(value: String,context: Dictionary={}) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	else:Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	phase_wall_time = Time.get_ticks_usec()
+	_update_audio()
 
 func _ui_action(kind: String,value: Variant) -> void:
 	match kind:
@@ -148,6 +165,7 @@ func _ui_action(kind: String,value: Variant) -> void:
 			_show("multiplayer")
 		"route":_request_action("turn",value)
 		"jump":_request_action("jump")
+		"reverse":_request_action("reverse")
 		"essence":_request_action("suction")
 		"pause":_pause()
 		"resume":_show("play")
@@ -155,13 +173,19 @@ func _ui_action(kind: String,value: Variant) -> void:
 		"options":
 			options_origin = "paused" if not demo else "main"
 			_show_options()
-		"option_sensitivity":
-			sensitivity_index = (sensitivity_index+1)%3
+		"sensitivity_adjust":
+			aim_sensitivity = clampf(snappedf(aim_sensitivity+float(value),0.1),0.5,3.0)
 			_save_settings()
 			_show_options()
-		"option_volume":
-			sound_volume = fmod(sound_volume+0.2,1.19)
-			shot_sound.volume_db = -12+linear_to_db(maxf(0.001,sound_volume))
+		"sensitivity_reset":
+			aim_sensitivity = 1.8
+			_save_settings()
+			_show_options()
+		"option_volume", "option_music", "option_ambience":
+			if kind=="option_volume":sound_volume = _cycle_volume(sound_volume)
+			elif kind=="option_music":music_volume = _cycle_volume(music_volume)
+			else:ambience_volume = _cycle_volume(ambience_volume)
+			_update_audio()
 			_save_settings()
 			_show_options()
 		"option_invert":
@@ -183,12 +207,27 @@ func _ui_action(kind: String,value: Variant) -> void:
 				_start_match(1,campaign_level,Time.get_ticks_msec(),[0])
 			else:_return_to_main()
 		"credits":_show("credits")
-		"quit":
-			net.close()
-			get_tree().quit()
+		"quit":_quit_game()
+
+func _quit_game(exit_code := 0) -> void:
+	if quitting:return
+	quitting = true
+	net.close()
+	set_physics_process(false)
+	shot_sound.stop()
+	soundscape.shutdown()
+	await get_tree().create_timer(0.3).timeout
+	get_tree().quit(exit_code)
+
+func _cycle_volume(value: float) -> float:
+	return 0.0 if value>=0.99 else minf(1.0,snappedf(value+0.1,0.1))
+
+func _update_audio() -> void:
+	if is_instance_valid(shot_sound):shot_sound.volume_db = -80 if sound_volume==0 else -12+linear_to_db(sound_volume)
+	if is_instance_valid(soundscape):soundscape.configure(music_volume,ambience_volume,app_paused or (not demo and not net.in_match and screen in ["paused","options","credits"]))
 
 func _show_options() -> void:
-	_show("options",{"sensitivity_name":["LOW","NORMAL","HIGH"][sensitivity_index],"volume":sound_volume,"invert":invert_aim,"motion":camera_motion})
+	_show("options",{"sensitivity_pct":roundi(aim_sensitivity*100),"volume":sound_volume,"music":music_volume,"ambience":ambience_volume,"invert":invert_aim,"motion":camera_motion})
 
 func _refresh_lobby() -> void:
 	if not net.active or net.in_match:return
@@ -224,6 +263,7 @@ func _return_to_main() -> void:
 func _start_match(size: int,map_id: int,seed_value: int,human_ids: Array,lan := false,attract := false) -> void:
 	demo = attract
 	biome = clampi(map_id,0,4)
+	soundscape.set_map(biome)
 	selected_size = size
 	rules.start(size,seed_value)
 	combat_random.seed = seed_value+414
@@ -281,7 +321,7 @@ func _setup_round() -> void:
 			motion.reset(body,course,spawn)
 		else:body.collision_mask = 0
 	player.collision_mask = 1
-	camera.position = Vector3(0,1.55,0)
+	camera.position = Vector3(0,1.75,0)
 	camera.rotation = Vector3.ZERO
 	gun.visible = true
 	for index in range(7):
@@ -292,8 +332,9 @@ func _setup_round() -> void:
 		supply_nodes.append(item)
 		supply_timers.append(0.0)
 	if _authority():
-		for node in [12,7,6,18,11,13]:_spawn_minion(node)
+		for i in range(6):_spawn_minion([12,7,6,18,11,13][i],["scavenger","stalker","brute"][i%3])
 	minion_spawn_left = 2.5
+	treasure_spawn_left = combat_random.randf_range(55,125)
 	_sync_legacy_motion()
 	_equip_viewmodel()
 
@@ -306,7 +347,7 @@ func _body(id: int) -> CharacterBody3D:
 func _alive(id: int) -> bool:
 	return id>=0 and id<rules.players.size() and rules.players[id].get("hp",0)>0 and rules.players[id]["lives"]>0 and rules.players[id].get("respawn",0)<=0
 
-func _create_entity(key: int,role: String,node: int,fighter := -1) -> CharacterBody3D:
+func _create_entity(key: int,role: String,node: int,fighter := -1,subtype := "scavenger") -> CharacterBody3D:
 	super._spawn_bot(node)
 	var body: CharacterBody3D = enemies.back()
 	body.set_meta("key",key)
@@ -317,22 +358,42 @@ func _create_entity(key: int,role: String,node: int,fighter := -1) -> CharacterB
 	body.set_meta("attack",0.8)
 	body.set_meta("air",false)
 	if role == "minion":
-		body.scale = Vector3.ONE*0.67
+		body.set_meta("subtype",subtype)
+		var definition: Dictionary = Minions.TYPES[subtype]
+		body.set_meta("hp",definition["hp"])
+		body.scale = Vector3.ONE*float(definition["scale"])
 		body.collision_layer = 2
-	else:body.collision_layer = _fighter_layer(fighter)
+		art.style_minion(body,subtype)
+	else:
+		var previous_model: Node3D = body.get_meta("model")
+		body.remove_child(previous_model)
+		previous_model.queue_free()
+		body.get_node("MuzzleFlash").free()
+		art.build_player(body,int(rules.players[fighter]["team"]))
+		for child in body.get_children():
+			if child is CollisionShape3D:
+				if child.shape is CapsuleShape3D:
+					child.shape.height = 2.1
+					child.position.y = 1.05
+				elif child.shape is BoxShape3D:
+					child.shape.size = Vector3(.9,.5,.42)
+					child.position.y = 1.6
+		body.collision_layer = _fighter_layer(fighter)
 	body.collision_mask = 0
 	var label := Label3D.new()
-	label.text = "MINION" if role=="minion" else rules.players[fighter]["name"]
+	label.text = Minions.TYPES[subtype]["name"] if role=="minion" else (("BLUE / " if rules.players[fighter]["team"]==0 else "RED / ")+rules.players[fighter]["name"])
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.font_size = 22
 	label.pixel_size = 0.006
-	label.position.y = 2.0
-	label.modulate = Color("70ccff") if role=="minion" else Color("edb45d")
+	label.position.y = 2.23
+	label.modulate = (Color("ffd06a") if subtype=="treasure" else Color("c3b9a6")) if role=="minion" else (Color("48a9ff") if rules.players[fighter]["team"]==0 else Color("ff4f62"))
 	body.add_child(label)
 	entities[key] = body
 	return body
 
-func _spawn_minion(node: int) -> void:
-	_create_entity(next_minion,"minion",node)
+func _spawn_minion(node: int,subtype := "") -> void:
+	if subtype.is_empty():subtype = Minions.ordinary(combat_random.randf())
+	_create_entity(next_minion,"minion",node,-1,subtype)
 	next_minion += 1
 
 func _notify(text: String,seconds := 2.2,fighter := -1) -> void:
@@ -384,6 +445,7 @@ func _input(event: InputEvent) -> void:
 			if event.keycode in [KEY_D,KEY_RIGHT]:_request_action("turn","right")
 			if event.keycode in [KEY_W,KEY_UP]:_request_action("turn","ahead")
 			if event.keycode in [KEY_S,KEY_DOWN]:_request_action("turn","down")
+			if event.keycode == KEY_Q:_request_action("reverse")
 			if event.keycode == KEY_SPACE:_request_action("jump")
 			if event.keycode == KEY_E:_request_action("suction")
 			if event.keycode == KEY_R:_request_action("reload")
@@ -394,7 +456,7 @@ func _input(event: InputEvent) -> void:
 func _look(change: Vector2) -> void:
 	if not rails.has(local_id):return
 	var motion = rails[local_id]
-	var multiplier: float = [0.65,1.0,1.4][sensitivity_index]
+	var multiplier: float = aim_sensitivity
 	motion.aim_yaw = clampf(motion.aim_yaw-change.x*multiplier,-1.1,1.1)
 	motion.pitch = clampf(motion.pitch-change.y*multiplier*(-1 if invert_aim else 1),-0.95,0.95)
 	camera.rotation = Vector3(motion.pitch,motion.aim_yaw,0)
@@ -405,8 +467,9 @@ func _request_action(kind: String,value: Variant=null) -> void:
 		if not net.hosting and rails.has(local_id) and _alive(local_id):
 			if kind == "turn":rails[local_id].choose(course,str(value))
 			if kind == "jump":rails[local_id].jump(player)
+			if kind == "reverse":rails[local_id].reverse(player)
 		var seq: int = net.send_action(kind,value)
-		if kind in ["turn","jump"]:critical_sequence = seq
+		if kind in ["turn","jump","reverse"]:critical_sequence = seq
 	else:
 		net.sequence += 1
 		_apply_action(local_id,kind,value,net.sequence)
@@ -430,6 +493,8 @@ func _apply_action(id: int,kind: String,value: Variant,sequence: int) -> void:
 			if value in ["left","right","ahead","down"] and rails.has(id):rails[id].choose(course,value)
 		"jump":
 			if rails.has(id):rails[id].jump(_body(id))
+		"reverse":
+			if rails.has(id):rails[id].reverse(_body(id))
 		"reload":_try_reload(id)
 		"suction":
 			if rules.phase==Rules.Phase.COLLECTION:rules.players[id]["suction"] = 1.6
@@ -444,8 +509,10 @@ func _notification(what: int) -> void:
 		app_paused = true
 		if screen=="play":_pause()
 		if is_instance_valid(shot_sound):shot_sound.stop()
+		_update_audio()
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		app_paused = false
+		_update_audio()
 		phase_wall_time = Time.get_ticks_usec()
 
 func _set_animations(active: bool) -> void:
@@ -632,7 +699,7 @@ func _respawn_fighter(id: int) -> void:
 	body.collision_layer = _fighter_layer(id)
 	if id!=local_id:body.show()
 	else:
-		camera.position = Vector3(0,1.55,0)
+		camera.position = Vector3(0,1.75,0)
 		camera.rotation = Vector3.ZERO
 		gun.show()
 
@@ -672,7 +739,7 @@ func _tick_human_motion(delta: float) -> void:
 			_damage_fighter(id,25)
 			_notify("MISSED LANDING",2,id)
 		if id==local_id:
-			camera.position = Vector3(0,1.55,0)
+			camera.position = Vector3(0,1.75,0)
 			camera.rotation = Vector3(rails[id].pitch,rails[id].aim_yaw,0)
 		else:
 			if body.has_meta("animation"):body.get_meta("animation").active = true
@@ -701,6 +768,10 @@ func _tick_bots(delta: float) -> void:
 		else:_bot_attack(id,delta)
 	if rules.phase==Rules.Phase.COLLECTION:
 		minion_spawn_left -= delta
+		treasure_spawn_left -= delta
+		if treasure_spawn_left<=0:
+			_spawn_minion([6,8,11,13,17][combat_random.randi_range(0,4)],"treasure")
+			treasure_spawn_left = INF
 		if _minion_count()<6 and minion_spawn_left<=0:
 			_spawn_minion([6,8,11,13,17,7][combat_random.randi_range(0,5)])
 			minion_spawn_left = 2.5
@@ -708,7 +779,8 @@ func _tick_bots(delta: float) -> void:
 func _move_bot(body: CharacterBody3D,delta: float) -> void:
 	var a := int(body.get_meta("from"))
 	var b := int(body.get_meta("to"))
-	var progress := float(body.get_meta("progress"))+delta*(2.8 if body.get_meta("role")=="minion" else 4.4)/12
+	var speed: float = Minions.TYPES[body.get_meta("subtype","scavenger")]["speed"] if body.get_meta("role")=="minion" else 4.4
+	var progress := float(body.get_meta("progress"))+delta*speed/12
 	if progress>=1:
 		var choices: Array = []
 		for node in course.links[b]:
@@ -718,10 +790,11 @@ func _move_bot(body: CharacterBody3D,delta: float) -> void:
 		var goal := _bot_goal(body)
 		b = choices[combat_random.randi_range(0,choices.size()-1)]
 		if combat_random.randf()>0.20:
-			var best := 999
+			var flee: bool = body.get_meta("subtype","")=="treasure"
+			var best := -1 if flee else 999
 			for node in choices:
 				var hops := _graph_distance(int(node),goal)
-				if hops<best:
+				if (hops>best if flee else hops<best):
 					best = hops
 					b = node
 		progress -= 1
@@ -792,7 +865,9 @@ func _minion_attack(body: CharacterBody3D,delta: float) -> void:
 	var timer := float(body.get_meta("attack"))-delta
 	body.set_meta("attack",timer)
 	if timer>0:return
-	body.set_meta("attack",1.15)
+	var definition: Dictionary = Minions.TYPES[body.get_meta("subtype","scavenger")]
+	if definition["damage"]<=0:return
+	body.set_meta("attack",definition["interval"])
 	var best := -1
 	var nearest := 10.0
 	for p in rules.players:
@@ -805,7 +880,7 @@ func _minion_attack(body: CharacterBody3D,delta: float) -> void:
 			nearest = distance
 			best = id
 	if best>=0:
-		_damage_fighter(best,9)
+		_damage_fighter(best,float(definition["damage"]))
 		body.set_meta("muzzle",0.12)
 
 func _bot_attack(id: int,delta: float) -> void:
@@ -837,13 +912,13 @@ func _bot_attack(id: int,delta: float) -> void:
 	else:_damage_entity(best,rules.stats(id)["damage"],id)
 
 func _ray_mask(id: int) -> int:
-	if rules.phase==Rules.Phase.COLLECTION:return 1|2|8
-	return 1|8|(4 if rules.players[id]["team"]==0 else 16|32)
+	if rules.phase==Rules.Phase.COLLECTION:return 1|2|8|64
+	return 1|8|64|(4 if rules.players[id]["team"]==0 else 16|32)
 
 func _target_for(id: int) -> Dictionary:
 	var body := _body(id)
 	if not is_instance_valid(body):return {}
-	var origin := body.position+Vector3.UP*1.55
+	var origin := body.position+Vector3.UP*1.75
 	var basis := body.global_basis
 	if rails.has(id):basis *= Basis.from_euler(Vector3(rails[id].pitch,rails[id].aim_yaw,0))
 	if id==local_id:
@@ -865,6 +940,10 @@ func _tick_auto_combat(delta: float) -> void:
 		var target: Object = hit["collider"]
 		if target is Area3D and target.has_meta("orb"):
 			var orb := int(target.get_meta("orb"))
+			if cloud.orbs.has(orb) and cloud.orbs[orb]["gold"]:
+				p["deny_id"] = -1
+				p["deny_dwell"] = 0.0
+				continue
 			if p["suction"]>0:continue
 			if p["deny_id"]!=orb:
 				p["deny_id"] = orb
@@ -916,7 +995,8 @@ func _damage_entity(body: CharacterBody3D,amount: float,attacker: int) -> void:
 		rules.players[attacker]["minions"] += 1
 		var pos := body.position
 		_create_corpse(body)
-		for i in range(3):cloud.spawn(pos+Vector3((i-1)*0.25,0.9,0.15*sin(i*2.0)),5)
+		var drop: Dictionary = Minions.TYPES[body.get_meta("subtype","scavenger")]
+		for i in range(int(drop["drops"])):cloud.spawn(pos+Vector3((i-(int(drop["drops"])-1)*.5)*0.20,0.9,0.15*sin(i*2.0)),int(drop["value"]),-1,bool(drop["gold"]))
 		_remove_entity(int(body.get_meta("key")))
 
 func _remove_entity(key: int) -> void:
@@ -940,7 +1020,7 @@ func _create_corpse(body: Node3D) -> void:
 	if body.get_meta("role")=="fighter":
 		var old_flash = body.get_node_or_null("MuzzleFlash")
 		if old_flash:old_flash.free()
-		art.build_enemy(body)
+		art.build_player(body,int(rules.players[int(body.get_meta("fighter"))]["team"]))
 	while corpses.size()>6:
 		var first: Node3D = corpses.pop_front()
 		corpse_lives.pop_front()
@@ -1111,14 +1191,17 @@ func _render_hud(delta: float) -> void:
 		if rise>0 and distance<10 and distance>5.9:route_hint = ("DOUBLE JUMP" if rise==2 else "JUMP")+" / LEDGE %.1f m" % maxf(0,distance-6.6)
 	var hit := _target_for(local_id) if _alive(local_id) and rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] else {}
 	var essence_target: bool = not hit.is_empty() and hit["collider"] is Area3D
+	var essence_gold: bool = essence_target and cloud.orbs.has(int(hit["collider"].get_meta("orb",-1))) and cloud.orbs[int(hit["collider"].get_meta("orb"))]["gold"]
 	var locked: bool = not hit.is_empty() and hit["collider"] is CharacterBody3D
 	var reload_hint := ""
 	if p["reload"]>0:reload_hint = "TAP IN AMBER" if not p["reload_used"] else "RELOADING"
 	elif p["ammo"]==0:reload_hint = "TAP ANYWHERE / RELOAD" if p["reserve"]>0 else "FIND AMMO"
-	elif essence_target:reload_hint = "HOLD AIM TO DENY / PULL TO COLLECT"
+	elif essence_target:
+		var orb_id: int = hit["collider"].get_meta("orb",-1)
+		reload_hint = "GOLD SOUL / HARVEST ONLY" if cloud.orbs.has(orb_id) and cloud.orbs[orb_id]["gold"] else "HOLD AIM TO DENY / PULL TO COLLECT"
 	var message := toast if toast_left>0 else ""
 	if not _alive(local_id):message = "RESPAWN / %.0f" % ceilf(p["respawn"]) if p["lives"]>0 else "ELIMINATED / WATCHING THE ROUND"
-	var view := {"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"notice":message,"route_hint":route_hint,"routes":choices,"queued":queued,"can_drop":can_drop,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":locked,"essence_target":essence_target,"reload_hint":reload_hint,"reload_progress":1.0-p["reload"]/maxf(0.01,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names()}
+	var view := {"team":p["team"],"lives":p["lives"],"souls":p["souls"],"frags":p["frags"],"remaining":rules.remaining,"round":rules.round_index,"phase_name":["COLLECTION A","SHOP","SHARED ROLL","HUNTING B","MATCH COMPLETE"][rules.phase],"health":p["hp"],"shield":p["shield"],"max_health":stat["health"],"max_shield":stat["shield"],"ammo":p["ammo"],"reserve":p["reserve"],"weapon":Rules.WEAPONS[p["weapon"]]["name"],"notice":message,"route_hint":route_hint,"routes":choices,"queued":queued,"can_drop":can_drop,"jumps":rails[local_id].jumps if rails.has(local_id) else 0,"alive":_alive(local_id),"can_collect":rules.phase==Rules.Phase.COLLECTION,"locked":locked,"essence_target":essence_target,"essence_gold":essence_gold,"reload_hint":reload_hint,"reload_progress":1.0-p["reload"]/maxf(0.01,p["reload_total"]) if p["reload"]>0 else -1.0,"reload_used":p["reload_used"],"reload_success":p["reload_flash"]*2,"rewards":rules.rewards,"names":_player_names()}
 	hud_ui.update_view(view,delta)
 	if screen=="shop":
 		var signature := str([p["souls"],p["weapon"],p["upgrades"],p["ready"]])
@@ -1135,7 +1218,7 @@ func _pack_snapshot() -> Dictionary:
 	for key in entities:
 		var body: CharacterBody3D = entities[key]
 		if body.get_meta("role")!="minion":continue
-		bodies.append({"key":key,"role":"minion","fid":-1,"position":body.position,"velocity":body.velocity,"yaw":body.rotation.y,"air":body.get_meta("air"),"muzzle":body.get_meta("muzzle"),"hp":body.get_meta("hp"),"rail":[]})
+		bodies.append({"key":key,"role":"minion","fid":-1,"position":body.position,"velocity":body.velocity,"yaw":body.rotation.y,"air":body.get_meta("air"),"muzzle":body.get_meta("muzzle"),"hp":body.get_meta("hp"),"subtype":body.get_meta("subtype","scavenger"),"rail":[]})
 	var packet := {"seq":snapshot_number,"players":rules.players.duplicate(true),"phase":rules.phase,"time":rules.remaining,"round":rules.round_index,"revision":rules.revision,"wins":rules.team_rounds.duplicate(),"winner":rules.match_winner,"rewards":rules.rewards.duplicate(true),"bodies":bodies,"orbs":cloud.pack(),"supplies":supply_timers.duplicate(),"shots":shot_events.duplicate(),"notices":notices.duplicate()}
 	shot_events.clear()
 	notices.clear()
@@ -1179,7 +1262,7 @@ func _apply_snapshot(packet: Dictionary) -> void:
 			player.collision_layer = _fighter_layer(local_id) if _alive(local_id) else 0
 			continue
 		seen.append(key)
-		if not entities.has(key):_create_entity(key,record["role"],_nearest_node(record["position"]),int(record["fid"]))
+		if not entities.has(key):_create_entity(key,record["role"],_nearest_node(record["position"]),int(record["fid"]),str(record.get("subtype","scavenger")))
 		var body: CharacterBody3D = entities[key]
 		body.set_meta("network_pos",record["position"])
 		body.set_meta("network_yaw",record["yaw"])
@@ -1215,7 +1298,7 @@ func _client_tick(delta: float) -> void:
 	if rules.phase in [Rules.Phase.COLLECTION,Rules.Phase.HUNT] and _alive(local_id):
 		var event: String = rails[local_id].step(player,course,delta)
 		if event=="missed":_notify("MISSED LANDING")
-		camera.position = Vector3(0,1.55,0)
+		camera.position = Vector3(0,1.75,0)
 		camera.rotation = Vector3(rails[local_id].pitch,rails[local_id].aim_yaw,0)
 		_sync_legacy_motion()
 	aim_send_left -= delta

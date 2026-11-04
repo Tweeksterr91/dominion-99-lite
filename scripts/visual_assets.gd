@@ -2,6 +2,8 @@ extends RefCounted
 ## Original low-poly asset kit. Static boxes share materials and GPU instance batches.
 
 const METAL_SHADER = preload("res://assets/metal.gdshader")
+const SENTINEL = preload("res://assets/models/sentinel.glb")
+const OUTLINE = preload("res://assets/team_outline.gdshader")
 const WARDEN = preload("res://assets/models/warden.glb")
 const SIDEARM = preload("res://assets/models/sidearm.glb")
 const SKIN = preload("res://assets/skin.gdshader")
@@ -275,6 +277,80 @@ func build_enemy(parent: Node3D) -> void:
 	var flash := _part(parent, Vector3(0.35, 1.01, -0.76), Vector3(0.12, 0.12, 0.16), "red")
 	flash.name = "MuzzleFlash"
 	flash.visible = false
+
+func build_player(parent: Node3D,team: int) -> void:
+	var model := SENTINEL.instantiate()
+	model.name = "Sentinel"
+	parent.add_child(model)
+	var color := Color("48a9ff") if team==0 else Color("ff4f62")
+	for mesh in model.find_children("*","MeshInstance3D",true,false):
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		for surface in range(mesh.mesh.get_surface_count()):
+			var original: StandardMaterial3D = mesh.get_active_material(surface)
+			var key := "sentinel_%d_%s" % [team,original.resource_name]
+			if not character_materials.has(key):
+				var material: StandardMaterial3D = original.duplicate()
+				if original.resource_name.begins_with("Team"):
+					material.albedo_color = color.darkened(.35) if "enamel" in original.resource_name else color
+					if material.emission_enabled:material.emission = color
+				var outline := ShaderMaterial.new()
+				outline.shader = OUTLINE
+				outline.set_shader_parameter("team_color",color)
+				material.next_pass = outline
+				character_materials[key] = material
+			mesh.set_surface_override_material(surface,character_materials[key])
+	var animation: AnimationPlayer = model.find_child("AnimationPlayer",true,false)
+	var clips: Dictionary = {}
+	if animation:
+		for clip in animation.get_animation_list():
+			for state in ["Run","Idle","Jump"]:
+				if clip.ends_with(state):
+					clips[state] = clip
+					animation.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+		parent.set_meta("animation",animation)
+		parent.set_meta("clips",clips)
+	parent.set_meta("model",model)
+	parent.set_meta("team_color",color)
+	animate_enemy(parent,"Run")
+	var flash := _part(parent,Vector3(.4,1.13,-.53),Vector3(.08,.08,.12),"amber")
+	flash.name = "MuzzleFlash"
+	flash.hide()
+
+func style_minion(parent: Node3D,kind: String) -> void:
+	var tint: Color = {"scavenger":Color("82998b"),"stalker":Color("9d78b9"),"brute":Color("b47b61"),"treasure":Color("e6c16b")}.get(kind,Color.WHITE)
+	var model: Node3D = parent.get_meta("model")
+	if kind=="stalker":model.scale = Vector3(.78,1.03,.85)
+	if kind=="brute":model.scale = Vector3(1.08,1,1.08)
+	for mesh in model.find_children("*","MeshInstance3D",true,false):
+		for surface in range(mesh.mesh.get_surface_count()):
+			var original: Material = mesh.get_active_material(surface)
+			if original is ShaderMaterial:
+				var key := "minion_%s_%d_%d" % [kind,surface,original.get_instance_id()]
+				if not character_materials.has(key):
+					var material: ShaderMaterial = original.duplicate()
+					material.set_shader_parameter("tint",tint if surface==0 else tint.darkened(.4))
+					character_materials[key] = material
+				mesh.set_surface_override_material(surface,character_materials[key])
+	if kind=="treasure":
+		var crown := MeshInstance3D.new()
+		var torus := TorusMesh.new()
+		torus.inner_radius = .27
+		torus.outer_radius = .32
+		torus.rings = 16
+		torus.ring_segments = 8
+		crown.mesh = torus
+		crown.material_override = materials["amber"]
+		crown.position = Vector3(0,2.1,0)
+		crown.rotation.z = .20
+		model.add_child(crown)
+		for side in [-1.0,1.0]:
+			var crystal := MeshInstance3D.new()
+			var gem := PrismMesh.new()
+			gem.size = Vector3(.16,.45,.15)
+			crystal.mesh = gem
+			crystal.material_override = materials["amber"]
+			crystal.position = Vector3(side*.65,1.1,0)
+			model.add_child(crystal)
 
 func animate_enemy(enemy: Node3D, state: String) -> void:
 	if not enemy.has_meta("animation"):

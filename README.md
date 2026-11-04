@@ -2,7 +2,7 @@
 
 A dark sci-fi portrait auto-runner FPS for Android: aim, choose routes, harvest essence, and hunt rivals.
 
-**[Download APK — v0.4.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.4.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
+**[Download APK — v0.5.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.5.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
 Development prototype for the OnePlus 12R, built with Godot 4.6.3. Fixed **60 FPS cap**, portrait orientation. Actual phone performance and Wi-Fi behavior still need device testing.
 
@@ -25,20 +25,35 @@ Round standings prioritize remaining team lives, then frags, then collected esse
 
 ## Controls and HUD
 
-- The character runs automatically. Drag the open play area to aim; a visible enemy under the crosshair is shot automatically. There is no running, strafing, or fire button.
-- Amber left/ahead/right arrows queue the next junction decision. The jumping-person icon sits below the ahead arrow. Tap once to jump, twice for a double jump; DOWN queues an available descending route. Route hints identify elevated paths. Missing a landing returns the runner to that hallway's start and costs 25 shield/health.
+- The character runs automatically. Drag the open play area to aim (default sensitivity is now 180% of the earlier speed); a visible enemy under the crosshair is shot automatically. There is no running, strafing, or fire button.
+- Amber left/ahead/right arrows queue the next junction decision. The jumping-person icon sits below the ahead arrow. Tap once to jump, twice for a double jump; the circular U-turn button below jump reverses your run direction by 180° immediately. DOWN queues an available descending route. Route hints identify elevated paths. Missing a landing returns the runner to that hallway's start and costs 25 shield/health.
 - **An empty magazine waits for a tap anywhere to start reloading.** The crosshair ring shows reload progress. A second tap in the amber segment completes it early. An early/late tap uses the bonus attempt but allows normal completion. Dragging an existing aim touch does not count as a new tap. There is no separate reload button.
 - Lives sit at the upper left; souls and frags at the upper right. The phase timer sits at the top center. Health and regenerating shield hug the bottom left; ammo and reserve hug the bottom right. No dark HUD panels.
 - Green pickups restore health; amber pickups supply ammunition. Shield recovers at 20/second after four seconds without damage, modified by gifts.
 - Pause freezes offline matches. **LAN matches continue behind the pause menu.** Keep the host app in the foreground.
 
-Desktop testing: mouse aim, A/D/W/S (or arrows) for routes, Space to jump/double jump, E to pull essence, R or mouse tap to reload, Esc to pause.
+Desktop testing: mouse aim, A/D/W/S (or arrows) for routes, Space to jump/double jump, Q to reverse 180°, E to pull essence, R or mouse tap to reload, Esc to pause.
 
 ## Menus and campaign
 
-The title screen runs a real AI-controlled gameplay demonstration behind the logo. Tap to enter the main menu: **Single Player Campaign**, **Multiplayer**, **Options**, **Quit Game**, and art credits.
+The Godot splash image is disabled. Android may still briefly show the app icon during native startup. The title screen runs a real AI-controlled gameplay demonstration behind the logo. Tap to enter the main menu: **Single Player Campaign**, **Multiplayer**, **Options**, **Quit Game**, and art credits.
 
-The initial campaign is a sequence of bot matches across five biome maps, unlocked by winning: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast. It is a match-based campaign foundation, without story cinematics. Options persist aim sensitivity, invert aim, sound volume, and camera motion. Weapon profiles currently share the modeled sidearm with size adjustments.
+The initial campaign is a sequence of bot matches across five biome maps, unlocked by winning: Verdant Ruins, Blue Catacombs, Ember Vault, Rootbound Forest, and Dune Coast. It is a match-based campaign foundation, without story cinematics. Options persist aiming sensitivity from 50%–300% in 10% steps, with a 180% reset, invert aim, separate effects/music/ambience volumes, and camera motion. Weapon profiles currently share the modeled sidearm with size adjustments.
+
+## Players, minions and audio
+
+Players now use an original, rigged **Sentinel** armored humanoid, larger than every minion type. Blue team (team 0) has blue armor accents and a blue silhouette outline; red team (team 1) has red accents and a red outline. Outlines respect walls. Running, idle, and jump animations are original to this player model. The smaller creatures retain their separate Sinbad-derived design.
+
+| Minion | Health | Behavior | Souls dropped |
+| --- | --- | --- | --- |
+| Scavenger | 65 | Standard ranged minion | 15 blue |
+| Stalker | 40 | Faster, lighter, violet-toned | 15 blue |
+| Brute | 110 | Slower, tougher, heavier hits | 20 blue |
+| Gilded Revenant | 80 | Rare gold-crowned treasure minion; flees instead of attacking | 90 gold |
+
+One treasure minion appears at a seeded random time between 55 and 125 seconds into each collection phase. Its six gold clusters can be harvested or stolen by either team. **Gold souls cannot be destroyed**, never trigger denial shots or spend ammo, and persist until collection ends. Ordinary blue essence can still be shot away and expires after 25 seconds.
+
+Each biome has its own original, unobtrusive ambient industrial/techno loop, layered with a quiet brown-noise rumble. Music and ambience have independent mute/volume controls and pause with offline play. The audio is synthesized from scratch; no third-party tracks or samples are used. Reproduce it with `art_sources/build_soundscapes.py` (Python, NumPy/SciPy and ffmpeg). `art_sources/build_sentinel.py` generates the original player model and animations in Blender.
 
 ## Local Wi-Fi / direct-IP multiplayer
 
@@ -60,6 +75,7 @@ Import `project.godot` in the official Godot Editor for Android to edit on your 
 - `scripts/souls_arena.gd`: active game, menus, combat, AI, local prediction and host simulation.
 - `scripts/match_rules.gd`: five-round rules, economy, team protection, rolls.
 - `scripts/lan_session.gd`: LAN rooms, readiness, validated actions and snapshot transport.
+- `scripts/minion_types.gd`, `map_soundscape.gd`: enemy variants and map audio.
 - `scripts/rail_motion.gd`: shared host/client autorun and real jump physics.
 - `scripts/arena_hud.gd`, `match_reticle.gd`, `ui_glyph.gd`: portrait UI and original vector icons.
 - `scripts/essence_cloud.gd`: shared essence, stealing, denial, batched particles.
@@ -67,11 +83,12 @@ Import `project.godot` in the official Godot Editor for Android to edit on your 
 - `scripts/runner.gd`, `main.gd`: earlier prototype and reusable foundation.
 - `art_sources/`: editable Blender generation and conversion scripts.
 
-See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated scenery, sidearm, hand, and icons use MIT. The adapted Sinbad creature and its textures use CC BY-SA 3.0; scans and lighting panorama are CC0. Rajdhani uses SIL OFL. Screenshots/video containing Sinbad are CC BY-SA 3.0 with attribution in ASSET_CREDITS.md.
+See [asset credits and licenses](ASSET_CREDITS.md). Original code, generated scenery, Sentinel player/animations, sidearm, hand, icons, and synthesized audio use MIT. The adapted Sinbad creature and its textures use CC BY-SA 3.0; scans and lighting panorama are CC0. Rajdhani uses SIL OFL. Screenshots/video containing Sinbad are CC BY-SA 3.0 with attribution in ASSET_CREDITS.md.
 
 ## Validation and releases
 
 ```sh
+godot --headless --path . --script tests/upgrade_features.gd
 godot --headless --path . --script tests/match_rules_test.gd
 godot --headless --path . --script tests/souls_game_test.gd
 godot --headless --path . --script tests/ui_navigation.gd --quit-after 120
