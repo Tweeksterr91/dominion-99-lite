@@ -1,6 +1,6 @@
 # Dominion '99 (Lite)
 
-A dark sci-fi arena FPS set in a Neo-Prohibition New York for Android with free movement, portrait/landscape play, controller support, automatic soul rewards, and team deathmatches.
+A dark sci-fi arena FPS set in a futuristic New York for Android with free movement, portrait/landscape play, controller support, automatic soul rewards, and team deathmatches.
 
 **[Download APK — v0.13.0](https://github.com/Tweeksterr91/dominion-99-lite/releases/download/v0.13.0/dominion-99-lite.apk)** · **[Releases](https://github.com/Tweeksterr91/dominion-99-lite/releases)**
 
